@@ -23,5 +23,6 @@
 
 1. Install BepInEx as described above.
 2. Copy `BepInEx/core/*.dll` and `TheKingsBird_Data/Managed/*.dll` into `Lib/`.
-3. (optional) Install the [ScriptEngine](https://github.com/BepInEx/BepInEx.Debug/releases) plugin to hot-load mods
+3. Set `Logging.Console.Enabled = true` in `BenInEx/config/BenInEx.cfg` to help with debugging.
+4. (optional) Install the [ScriptEngine](https://github.com/BepInEx/BepInEx.Debug/releases) plugin to hot-load mods
    placed in `BepInEx/scripts/` by pressing F6.
