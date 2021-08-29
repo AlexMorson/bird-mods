@@ -31,6 +31,7 @@ namespace TasBird.Link
         public static float ReadFloat(NetworkStream stream)
         {
             var bytes = ReadBytes(stream, 4);
+            if (BitConverter.IsLittleEndian) Array.Reverse(bytes);
             return BitConverter.ToSingle(bytes, 0);
         }
 
