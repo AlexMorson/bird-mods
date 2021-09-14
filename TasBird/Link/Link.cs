@@ -18,7 +18,7 @@ namespace TasBird.Link
 
         private Link()
         {
-            running = Config.Bind("General", "Enabled", false, "Enable the TCP Server");
+            running = Config.Bind("General", "Enabled", true, "Enable the TCP Server");
             port = Config.Bind("General", "Port", 13337, "The port that the TCP Server listens on");
         }
 
