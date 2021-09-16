@@ -108,8 +108,23 @@ namespace TasBird
 
             deathZones.Clear();
             foreach (var deathZone in MasterController.GetObjects().GetObjects<DeathZone>())
-                if (deathZone.kind == 0)
+            {
+                if (deathZone is InvertedDeathZone)
+                {
+                    var x1 = deathZone.GridHitbox.X1 - 16;
+                    var x2 = deathZone.GridHitbox.X2 + 16;
+                    var y1 = deathZone.GridHitbox.Y1 - 64;
+                    var y2 = deathZone.GridHitbox.Y2 + 64;
+                    deathZones.Add(new Rectangle(new Coord(-1e6, -1e6), new Coord(1e6, y1)));
+                    deathZones.Add(new Rectangle(new Coord(-1e6, y2), new Coord(1e6, 1e6)));
+                    deathZones.Add(new Rectangle(new Coord(-1e6, y1), new Coord(x1, y2)));
+                    deathZones.Add(new Rectangle(new Coord(x2, y1), new Coord(1e6, y2)));
+                }
+                else if (deathZone.kind == 0)
+                {
                     deathZones.Add(deathZone.GridHitbox);
+                }
+            }
 
             checkpoints.Clear();
             foreach (var checkpoint in MasterController.GetObjects().GetObjects<Checkpoint>())
