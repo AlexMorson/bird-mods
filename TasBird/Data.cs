@@ -24,6 +24,7 @@ namespace TasBird
         private static readonly Texture2D Texture = new Texture2D(1, 1);
 
         private LineRenderer noDash;
+        private LineRenderer optimalLeft, optimalRight;
         private readonly List<LineRenderer> surfaces = new List<LineRenderer>();
         private readonly List<LineRenderer> circles = new List<LineRenderer>();
         private readonly List<Rectangle> deathZones = new List<Rectangle>();
@@ -45,6 +46,12 @@ namespace TasBird
 
             if (noDash is null)
                 noDash = CreateLineRenderer(Color.red, 4, true, 1);
+
+            if (optimalLeft is null)
+                optimalLeft = CreateLineRenderer(Color.cyan, 4, true, 4);
+
+            if (optimalRight is null)
+                optimalRight = CreateLineRenderer(Color.cyan, 4, true, 4);
         }
 
         private void OnDestroy()
@@ -85,6 +92,8 @@ namespace TasBird
             {
                 noDash.positionCount = 0;
             }
+
+            UpdateOptimalAngles();
         }
 
         private void OnLevelStart(bool newScene)
@@ -300,6 +309,83 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
             var delta = 2 * Mathf.PI / segments;
             for (var i = 0; i < segments; ++i)
                 lineRenderer.SetPosition(i, new Vector3(x + r * Mathf.Sin(i * delta), y + r * Mathf.Cos(i * delta), 0));
+        }
+
+        private void UpdateOptimalAngles()
+        {
+            var player = MasterController.GetPlayer();
+            if (player.Contact.Exists || player.Velocity.IsZero)
+            {
+                optimalLeft.positionCount = 0;
+                optimalRight.positionCount = 0;
+                return;
+            }
+
+            var velocity = player.Velocity;
+            var originalVelocityAngle = new Angle(velocity);
+
+            // Gravity
+            velocity += player.Gravity;
+
+            // Drag
+            velocity.x = Math.Sign(velocity.x) *
+                         Math.Sqrt(Math.Max(
+                             velocity.x * velocity.x - Calc.Clamp((Math.Abs(velocity.x) - 6.0) * 0.5, 0.0, 1.0), 0.0));
+
+            // Test the 8 input angles to see which deflect the velocity most to the left/right
+            // If there are ties, choose the angles closest to the current velocity angle
+
+            var velocityAngle = new Angle(velocity);
+
+            var leftAngle = new Angle();
+            var leftDeflection = -1e10;
+            var rightAngle = new Angle();
+            var rightDeflection = 1e10;
+
+            for (double input = -180; input < 180; input += 45)
+            {
+                // In the game there is an extra (linear) dependency on cloak power that is used in the calculation
+                // for deflection but we only care which input gives the greatest deflection so this can be ignored.
+
+                var inputAngle = new Angle(input);
+                var clampedAngle = inputAngle;
+                if (clampedAngle != velocityAngle.Flip)
+                {
+                    clampedAngle = Calc.Clamp(clampedAngle - velocityAngle, -90.0, 90.0) + velocityAngle;
+                }
+
+                double correlation = clampedAngle.Dot(velocityAngle) * 0.5 + 0.5;
+                var deflection = velocityAngle.Lerp(velocityAngle.Lerp(clampedAngle, correlation),
+                    Calc.Clamp(velocity.Length / 200, 0.0, 0.3 * correlation)) - velocityAngle;
+
+                if (deflection > leftDeflection ||
+                    deflection == leftDeflection &&
+                    Math.Abs(originalVelocityAngle - leftAngle) >
+                    Math.Abs(originalVelocityAngle - inputAngle))
+                {
+                    leftAngle = inputAngle;
+                    leftDeflection = deflection;
+                }
+
+                if (deflection < rightDeflection ||
+                    deflection == rightDeflection &&
+                    Math.Abs(originalVelocityAngle - rightAngle) >
+                    Math.Abs(originalVelocityAngle - inputAngle))
+                {
+                    rightAngle = inputAngle;
+                    rightDeflection = deflection;
+                }
+            }
+
+            // Update the LineRenderers
+
+            optimalLeft.positionCount = 2;
+            optimalLeft.SetPosition(0, player.Position.V3);
+            optimalLeft.SetPosition(1, (player.Position + new Coord(leftAngle, 40)).V3);
+
+            optimalRight.positionCount = 2;
+            optimalRight.SetPosition(0, player.Position.V3);
+            optimalRight.SetPosition(1, (player.Position + new Coord(rightAngle, 40)).V3);
         }
     }
 }
