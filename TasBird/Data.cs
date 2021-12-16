@@ -25,11 +25,14 @@ namespace TasBird
 
         private LineRenderer noDash;
         private LineRenderer optimalLeft, optimalRight;
+        private LineRenderer optimalPath;
         private readonly List<LineRenderer> surfaces = new List<LineRenderer>();
         private readonly List<LineRenderer> circles = new List<LineRenderer>();
         private readonly List<Rectangle> deathZones = new List<Rectangle>();
         private readonly List<Rectangle> checkpoints = new List<Rectangle>();
         private readonly List<Rectangle> endPoints = new List<Rectangle>();
+
+        private Vector3 target;
 
         private Data()
         {
@@ -48,10 +51,13 @@ namespace TasBird
                 noDash = CreateLineRenderer(Color.red, 4, true, 1);
 
             if (optimalLeft is null)
-                optimalLeft = CreateLineRenderer(Color.cyan, 4, true, 4);
+                optimalLeft = CreateLineRenderer(Color.cyan, 4, true, 2);
 
             if (optimalRight is null)
-                optimalRight = CreateLineRenderer(Color.cyan, 4, true, 4);
+                optimalRight = CreateLineRenderer(Color.cyan, 4, true, 2);
+
+            if (optimalPath is null)
+                optimalPath = CreateLineRenderer(Color.yellow, 5, true, 3);
         }
 
         private void OnDestroy()
@@ -76,6 +82,12 @@ namespace TasBird
         {
             if (minimalMode.Value != minimalModeEnabled)
                 ToggleMinimalMode(minimalMode.Value);
+
+            if (Input.GetMouseButton(1))
+                target = 2 * Input.mousePosition + MasterController.GetCamera().state.Position.V3 -
+                         new Vector3(Screen.width, Screen.height);
+
+            UpdateOptimalPath();
         }
 
         private void OnPlayerUpdate(int frame)
@@ -158,7 +170,8 @@ Pos: {player.Position.x:0.00}, {player.Position.y:0.00}
 Vel: {player.Velocity.x:0.00}, {player.Velocity.y:0.00}
 Speed: {player.Velocity.Length:0.00} at {Math.Atan2(player.Velocity.y, player.Velocity.x) * 180 / Math.PI:0.0}°
 Cloak: {timers.Get(Player.Timers.Cloak):0}, {Math.Round(power * 45.0):0}
-Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" : "None")}";
+Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" : "None")}
+Checkpoint: {(player.Checkpoint != null ? $"{player.Checkpoint.priority}" : "None")}";
 
             var timersText = "Timers:\n";
             foreach (Player.Timers timer in Enum.GetValues(typeof(Player.Timers)))
@@ -401,6 +414,53 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
             optimalRight.positionCount = 2;
             optimalRight.SetPosition(0, player.Position.V3);
             optimalRight.SetPosition(1, (player.Position + new Coord(rightAngle, 40)).V3);
+        }
+
+        private void UpdateOptimalPath()
+        {
+            var player = MasterController.GetPlayer();
+            if (player.Contact.Exists)
+            {
+                optimalPath.positionCount = 0;
+                return;
+            }
+
+            var start = player.Position.V3;
+            var y0 = start.y + (float)player.Velocity.LengthSqr / 0.8f;
+            var end = new Vector3(target.x, Mathf.Min(target.y, y0 - 1));
+
+            if (Math.Abs(target.x - player.Position.x) < 1e-5)
+            {
+                optimalPath.positionCount = 2;
+                optimalPath.SetPosition(0, start);
+                optimalPath.SetPosition(1, end);
+                return;
+            }
+
+            var x0 = (4 * (end.x * end.x - start.x * start.x) +
+                      Mathf.PI * Mathf.PI * (end.y * end.y - start.y * start.y) -
+                      2 * Mathf.PI * Mathf.PI * y0 * (end.y - start.y)) /
+                     (8 * (end.x - start.x));
+
+            var r = Mathf.Sqrt(Mathf.Pow((start.x - x0) / Mathf.PI, 2) + Mathf.Pow((start.y - y0) / 2, 2));
+
+            var tStart = Mathf.Acos((start.x - x0) / (Mathf.PI * r));
+            var tEnd = Mathf.Acos((end.x - x0) / (Mathf.PI * r));
+
+            if (tStart > tEnd)
+            {
+                var tmp = tStart;
+                tStart = tEnd;
+                tEnd = tmp;
+            }
+
+            const int segments = 50;
+            optimalPath.positionCount = segments + 1;
+            for (var i = 0; i <= segments; ++i)
+            {
+                var t = tStart + (tEnd - tStart) * i / segments;
+                optimalPath.SetPosition(i, new Vector3(x0 + Mathf.PI * r * Mathf.Cos(t), y0 - 2 * r * Mathf.Sin(t)));
+            }
         }
     }
 }
