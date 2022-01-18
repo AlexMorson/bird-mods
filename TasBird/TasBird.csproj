@@ -65,7 +65,9 @@
     <Compile Include="Link\Message.cs" />
     <Compile Include="Link\SaveReplayMessage.cs" />
     <Compile Include="Link\Server.cs" />
+    <Compile Include="Link\StepFrameCommand.cs" />
     <Compile Include="Link\TeleportCommand.cs" />
+    <Compile Include="Link\TogglePauseCommand.cs" />
     <Compile Include="Link\Util.cs" />
     <Compile Include="Replay.cs" />
     <Compile Include="Time.cs" />
