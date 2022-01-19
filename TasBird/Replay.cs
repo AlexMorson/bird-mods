@@ -53,6 +53,7 @@ namespace TasBird
                 ++MasterController.GetPlayer().framesInLevel;
                 MasterController.GetInput().OnFixedUpdate();
                 Util.OnLevelReload();
+                GameObject.Find("Fader").GetComponent<FadeLoader>().Fade(0);
             }
             else
             {
