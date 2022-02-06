@@ -1,5 +1,4 @@
 ﻿using System;
-using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
 using UnityEngine;
@@ -8,10 +7,7 @@ using UnityEngine.SceneManagement;
 
 namespace TasBird
 {
-    [BepInPlugin("com.alexmorson.tasbird.replay", "TasBird.Replay", "1.0")]
-    [BepInDependency("com.alexmorson.tasbird.invalidate", "1.0")]
-    [BepInDependency("com.alexmorson.tasbird.util", "1.0")]
-    public class Replay : BaseUnityPlugin
+    public class Replay : MonoBehaviour
     {
         public static event UnityAction<string, string, int> SaveReplay;
 
@@ -20,9 +16,10 @@ namespace TasBird
 
         private void Awake()
         {
-            takeOver = Config.Bind("Hotkeys", "TakeOver", new KeyboardShortcut(KeyCode.Insert),
+            var config = Plugin.Instance.Config;
+            takeOver = config.Bind("Replay", "TakeOver", new KeyboardShortcut(KeyCode.Insert),
                 "Take over a currently running replay");
-            saveReplay = Config.Bind("Hotkeys", "SaveReplay", new KeyboardShortcut(KeyCode.S, KeyCode.LeftControl),
+            saveReplay = config.Bind("Replay", "SaveReplay", new KeyboardShortcut(KeyCode.S, KeyCode.LeftControl),
                 "Save a replay formed by the inputs entered up to this point");
         }
 

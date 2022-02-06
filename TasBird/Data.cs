@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
 using UnityEngine;
@@ -9,10 +8,7 @@ using UnityEngine.SceneManagement;
 
 namespace TasBird
 {
-    [BepInPlugin("com.alexmorson.tasbird.data", "TasBird.Data", "1.0")]
-    [BepInDependency("com.alexmorson.tasbird.invalidate", "1.0")]
-    [BepInDependency("com.alexmorson.tasbird.util", "1.0")]
-    public class Data : BaseUnityPlugin
+    public class Data : MonoBehaviour
     {
         private static bool minimalModeEnabled;
         private static ConfigEntry<bool> minimalMode;
@@ -33,7 +29,8 @@ namespace TasBird
 
         private Data()
         {
-            minimalMode = Config.Bind("General", "MinimalMode", false, "Turn off all background art and details");
+            minimalMode = Plugin.Instance.Config.Bind("Data", "MinimalMode", false,
+                "Turn off all background art and details");
         }
 
         private void Awake()

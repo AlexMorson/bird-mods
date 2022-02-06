@@ -69,9 +69,10 @@
     <Compile Include="Link\TeleportCommand.cs" />
     <Compile Include="Link\TogglePauseCommand.cs" />
     <Compile Include="Link\Util.cs" />
+    <Compile Include="Plugin.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Replay.cs" />
     <Compile Include="Time.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Util.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

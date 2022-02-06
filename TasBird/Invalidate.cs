@@ -1,9 +1,8 @@
-﻿using BepInEx;
+﻿using UnityEngine;
 
 namespace TasBird
 {
-    [BepInPlugin("com.alexmorson.tasbird.invalidate", "TasBird.Invalidate", "1.0")]
-    public class Invalidate : BaseUnityPlugin
+    public class Invalidate : MonoBehaviour
     {
         private void Update()
         {

@@ -1,12 +1,11 @@
-﻿using BepInEx;
-using HarmonyLib;
+﻿using HarmonyLib;
+using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 
 namespace TasBird
 {
-    [BepInPlugin("com.alexmorson.tasbird.util", "TasBird.Util", "1.0")]
-    public class Util : BaseUnityPlugin
+    public class Util : MonoBehaviour
     {
         public static event UnityAction<bool> LevelStart;
         public static event UnityAction<int> PlayerUpdate;

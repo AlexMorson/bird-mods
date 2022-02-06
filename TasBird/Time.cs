@@ -1,15 +1,11 @@
-﻿using BepInEx;
-using BepInEx.Configuration;
+﻿using BepInEx.Configuration;
 using HarmonyLib;
 using UnityEngine;
 using UnityTime = UnityEngine.Time;
 
 namespace TasBird
 {
-    [BepInPlugin("com.alexmorson.tasbird.time", "TasBird.Time", "1.0")]
-    [BepInDependency("com.alexmorson.tasbird.invalidate", "1.0")]
-    [BepInDependency("com.alexmorson.tasbird.util", "1.0")]
-    public class Time : BaseUnityPlugin
+    public class Time : MonoBehaviour
     {
         private static ConfigEntry<KeyboardShortcut> togglePause;
         private static ConfigEntry<KeyboardShortcut> stepFrame;
@@ -31,13 +27,14 @@ namespace TasBird
 
         private Time()
         {
-            togglePause = Config.Bind("Hotkeys", "TogglePause", new KeyboardShortcut(KeyCode.Keypad0),
+            var config = Plugin.Instance.Config;
+            togglePause = config.Bind("Time", "TogglePause", new KeyboardShortcut(KeyCode.Keypad0),
                 "Play/Pause the game");
-            stepFrame = Config.Bind("Hotkeys", "StepFrame", new KeyboardShortcut(KeyCode.Space),
+            stepFrame = config.Bind("Time", "StepFrame", new KeyboardShortcut(KeyCode.Space),
                 "Step a single frame forward");
-            speedUp = Config.Bind("Hotkeys", "SpeedUp", new KeyboardShortcut(KeyCode.Equals),
+            speedUp = config.Bind("Time", "SpeedUp", new KeyboardShortcut(KeyCode.Equals),
                 "Speed the game up");
-            slowDown = Config.Bind("Hotkeys", "SlowDown", new KeyboardShortcut(KeyCode.Minus),
+            slowDown = config.Bind("Time", "SlowDown", new KeyboardShortcut(KeyCode.Minus),
                 "Slow the game down");
         }
 
@@ -168,15 +165,15 @@ namespace TasBird
     internal static class ValidateSettingsPatch
     {
         private static float timeScale;
-        private static void Prefix() => timeScale = UnityEngine.Time.timeScale;
-        private static void Postfix() => UnityEngine.Time.timeScale = timeScale;
+        private static void Prefix() => timeScale = UnityTime.timeScale;
+        private static void Postfix() => UnityTime.timeScale = timeScale;
     }
 
     [HarmonyPatch(typeof(Player), "TogglePlayerLock")]
     internal static class TogglePlayerLockPatch
     {
         private static float timeScale;
-        private static void Prefix() => timeScale = UnityEngine.Time.timeScale;
-        private static void Postfix() => UnityEngine.Time.timeScale = timeScale;
+        private static void Prefix() => timeScale = UnityTime.timeScale;
+        private static void Postfix() => UnityTime.timeScale = timeScale;
     }
 }

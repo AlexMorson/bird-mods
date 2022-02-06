@@ -1,13 +1,10 @@
-﻿using BepInEx;
-using HarmonyLib;
+﻿using HarmonyLib;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace TasBird
 {
-    [BepInPlugin("com.alexmorson.tasbird.camera", "TasBird.Camera", "1.0")]
-    [BepInDependency("com.alexmorson.tasbird.invalidate", "1.0")]
-    public class Camera : BaseUnityPlugin
+    public class Camera : MonoBehaviour
     {
         public static bool IsFixed { get; private set; }
         public static Vector3 Position { get; private set; }

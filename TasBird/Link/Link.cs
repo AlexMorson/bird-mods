@@ -1,14 +1,10 @@
 ﻿using System.Collections.Generic;
-using BepInEx;
 using BepInEx.Configuration;
+using UnityEngine;
 
 namespace TasBird.Link
 {
-    [BepInPlugin("com.alexmorson.tasbird.link", "TasBird.Link", "1.0")]
-    [BepInDependency("com.alexmorson.tasbird.invalidate", "1.0")]
-    [BepInDependency("com.alexmorson.tasbird.replay", "1.0")]
-    [BepInDependency("com.alexmorson.tasbird.util", "1.0")]
-    public class Link : BaseUnityPlugin
+    public class Link : MonoBehaviour
     {
         private readonly ConfigEntry<bool> running;
         private readonly ConfigEntry<int> port;
@@ -18,8 +14,9 @@ namespace TasBird.Link
 
         private Link()
         {
-            running = Config.Bind("General", "Enabled", true, "Enable the TCP Server");
-            port = Config.Bind("General", "Port", 13337, "The port that the TCP Server listens on");
+            var config = Plugin.Instance.Config;
+            running = config.Bind("Link", "Enabled", true, "Enable the TCP Server");
+            port = config.Bind("Link", "Port", 13337, "The port that the TCP Server listens on");
         }
 
         private void Awake()
