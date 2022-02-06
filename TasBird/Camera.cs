@@ -1,4 +1,5 @@
-﻿using HarmonyLib;
+﻿using BepInEx.Configuration;
+using HarmonyLib;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -11,9 +12,17 @@ namespace TasBird
         public static float FOV { get; private set; }
         public static float HalfHeight { get; private set; }
 
+        private readonly ConfigEntry<KeyboardShortcut> resetCamera;
+
         private static Vector3 prevMousePos;
 
         private static readonly Harmony Harmony = new Harmony("com.alexmorson.tasbird.camera");
+
+        private Camera()
+        {
+            resetCamera = Plugin.Instance.Config.Bind("Camera", "Reset", new KeyboardShortcut(KeyCode.Mouse2),
+                "Reset the camera");
+        }
 
         private void Awake()
         {
@@ -48,7 +57,7 @@ namespace TasBird
                 FOV = 2 * Mathf.Atan(HalfHeight / -Position.z) * 180 / Mathf.PI;
             }
 
-            if (Input.GetMouseButtonDown(2))
+            if (resetCamera.Value.IsDown())
                 IsFixed = false;
 
             prevMousePos = mousePos;
