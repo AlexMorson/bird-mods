@@ -66,13 +66,13 @@ namespace TasBird
             Util.PlayerUpdate += OnPlayerUpdate;
 
             if (lastDash is null)
-                lastDash = CreateLineRenderer(Color.red, 4, true, 1);
+                lastDash = CreateLineRenderer(Color.red, 4, 1);
 
             if (optimalLeft is null)
-                optimalLeft = CreateLineRenderer(Color.cyan, 4, true, 4);
+                optimalLeft = CreateLineRenderer(Color.cyan, 4, 4);
 
             if (optimalRight is null)
-                optimalRight = CreateLineRenderer(Color.cyan, 4, true, 4);
+                optimalRight = CreateLineRenderer(Color.cyan, 4, 4);
         }
 
         private void OnDestroy()
@@ -131,11 +131,7 @@ namespace TasBird
             foreach (var endPoint in MasterController.GetObjects().GetObjects<EndPoint>())
                 endPoints.Add(endPoint.GridHitbox);
 
-            // The old LineRenderers got removed when the scene unloaded, so drop any references to them
-            surfaces.Clear();
             ToggleSurfaceRenderers(drawSurfaces.Value);
-
-            circles.Clear();
             ToggleCircleRenderers(drawCollectables.Value, drawCageZones.Value);
         }
 
@@ -242,7 +238,7 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
                     current = current.Tail;
                 }
 
-                var lineRenderer = CreateLineRenderer(Color.white, 4, false, 0);
+                var lineRenderer = CreateLineRenderer(Color.white, 4, 0);
 
                 if (current.Exists)
                     lineRenderer.loop = true;
@@ -270,7 +266,7 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
             {
                 foreach (var bird in MasterController.GetObjects().GetObjects<Collectibird>())
                 {
-                    var lineRenderer = CreateLineRenderer(Color.white, 2, false, 0);
+                    var lineRenderer = CreateLineRenderer(Color.white, 2, 0);
                     var spawn = AccessTools.FieldRefAccess<Collectibird, Coord>(bird, "spawn");
                     CreateCircleRenderer(lineRenderer, (float)spawn.x, (float)spawn.y, 64, 30);
                     circles.Add(lineRenderer);
@@ -278,7 +274,7 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
 
                 foreach (var totem in MasterController.GetObjects().GetObjects<Totem>())
                 {
-                    var lineRenderer = CreateLineRenderer(Color.white, 2, false, 0);
+                    var lineRenderer = CreateLineRenderer(Color.white, 2, 0);
                     var position = totem.transform.position;
                     CreateCircleRenderer(lineRenderer, position.x, position.y, 96, 30);
                     circles.Add(lineRenderer);
@@ -291,11 +287,11 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
                 {
                     var start = cage.Beginning;
                     var end = cage.End;
-                    var lineRenderer = CreateLineRenderer(Color.white, 2, false, 0);
+                    var lineRenderer = CreateLineRenderer(Color.white, 2, 0);
                     var position = start.transform.position;
                     CreateCircleRenderer(lineRenderer, position.x, position.y, start.radius, 30);
                     circles.Add(lineRenderer);
-                    lineRenderer = CreateLineRenderer(Color.white, 2, false, 0);
+                    lineRenderer = CreateLineRenderer(Color.white, 2, 0);
                     position = end.transform.position;
                     CreateCircleRenderer(lineRenderer, position.x, position.y, end.radius, 30);
                     circles.Add(lineRenderer);
@@ -351,10 +347,10 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
             return points;
         }
 
-        private LineRenderer CreateLineRenderer(Color color, float width, bool persist, int order)
+        private LineRenderer CreateLineRenderer(Color color, float width, int order)
         {
             var child = new GameObject();
-            if (persist) child.transform.parent = gameObject.transform;
+            child.transform.parent = gameObject.transform;
             var lineRenderer = child.AddComponent<LineRenderer>();
             lineRenderer.sortingLayerName = "Foreground";
             lineRenderer.sortingOrder = 10000 + order;
