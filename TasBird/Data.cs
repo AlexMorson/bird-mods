@@ -10,8 +10,7 @@ namespace TasBird
 {
     public class Data : MonoBehaviour
     {
-        private static bool minimalModeEnabled;
-        private static ConfigEntry<bool> minimalMode;
+        private readonly ConfigEntry<bool> minimalMode;
 
         private static readonly GUIStyle BgStyle = new GUIStyle { fontSize = 20, normal = { textColor = Color.black } };
         private static readonly GUIStyle FgStyle = new GUIStyle { fontSize = 20, normal = { textColor = Color.white } };
@@ -31,6 +30,7 @@ namespace TasBird
         {
             minimalMode = Plugin.Instance.Config.Bind("Data", "MinimalMode", false,
                 "Turn off all background art and details");
+            minimalMode.SettingChanged += (sender, e) => ToggleMinimalMode(minimalMode.Value);
         }
 
         private void Awake()
@@ -56,7 +56,7 @@ namespace TasBird
             Util.LevelStart -= OnLevelStart;
             Util.PlayerUpdate -= OnPlayerUpdate;
 
-            if (minimalModeEnabled)
+            if (minimalMode.Value)
                 ToggleMinimalMode(false);
 
             foreach (var renderer in surfaces.Union(circles))
@@ -67,12 +67,6 @@ namespace TasBird
 
             surfaces.Clear();
             circles.Clear();
-        }
-
-        private void Update()
-        {
-            if (minimalMode.Value != minimalModeEnabled)
-                ToggleMinimalMode(minimalMode.Value);
         }
 
         private void OnPlayerUpdate(int frame)
@@ -101,7 +95,8 @@ namespace TasBird
 
         private void OnNewSceneLoaded()
         {
-            minimalModeEnabled = false;
+            if (minimalMode.Value)
+                ToggleMinimalMode(true);
 
             deathZones.Clear();
             foreach (var deathZone in MasterController.GetObjects().GetObjects<DeathZone>())
@@ -177,9 +172,6 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
 
         private static void ToggleMinimalMode(bool on)
         {
-            if (minimalModeEnabled == on) return;
-
-            minimalModeEnabled = on;
             foreach (var layer in LayerManager.Manager.Layers)
             {
                 if (layer.name == "PlayerLayer")
