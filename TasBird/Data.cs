@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using BepInEx.Configuration;
 using HarmonyLib;
 using UnityEngine;
@@ -11,6 +10,16 @@ namespace TasBird
     public class Data : MonoBehaviour
     {
         private readonly ConfigEntry<bool> minimalMode;
+        private readonly ConfigEntry<bool> drawCageZones;
+        private readonly ConfigEntry<bool> drawCheckpoints;
+        private readonly ConfigEntry<bool> drawCollectables;
+        private readonly ConfigEntry<bool> drawDeathzones;
+        private readonly ConfigEntry<bool> drawDebugData;
+        private readonly ConfigEntry<bool> drawEndPoints;
+        private readonly ConfigEntry<bool> drawHitbox;
+        private readonly ConfigEntry<bool> drawLastDash;
+        private readonly ConfigEntry<bool> drawOptimalAngles;
+        private readonly ConfigEntry<bool> drawSurfaces;
 
         private static readonly GUIStyle BgStyle = new GUIStyle { fontSize = 20, normal = { textColor = Color.black } };
         private static readonly GUIStyle FgStyle = new GUIStyle { fontSize = 20, normal = { textColor = Color.white } };
@@ -18,7 +27,7 @@ namespace TasBird
         private static readonly Material Material = new Material(Shader.Find("Sprites/Default"));
         private static readonly Texture2D Texture = new Texture2D(1, 1);
 
-        private LineRenderer noDash;
+        private LineRenderer lastDash;
         private LineRenderer optimalLeft, optimalRight;
         private readonly List<LineRenderer> surfaces = new List<LineRenderer>();
         private readonly List<LineRenderer> circles = new List<LineRenderer>();
@@ -28,8 +37,23 @@ namespace TasBird
 
         private Data()
         {
-            minimalMode = Plugin.Instance.Config.Bind("Data", "MinimalMode", false,
-                "Turn off all background art and details");
+            drawCageZones = Plugin.Instance.Config.Bind("Data", "DrawCageZones", true, "Draw the activation circles at the start and end of caged levels");
+            drawCheckpoints = Plugin.Instance.Config.Bind("Data", "DrawCheckpoints", true, "Draw the checkpoint activation zones");
+            drawCollectables = Plugin.Instance.Config.Bind("Data", "DrawCollectables", true, "Draw the collection zone for birds and totems");
+            drawDeathzones = Plugin.Instance.Config.Bind("Data", "DrawDeathzones", true, "Draw the deathzones");
+            drawDebugData = Plugin.Instance.Config.Bind("Data", "DrawDebugData", true, "Draw debug data");
+            drawEndPoints = Plugin.Instance.Config.Bind("Data", "DrawEndPoints", true, "Draw the activation zones for doors");
+            drawHitbox = Plugin.Instance.Config.Bind("Data", "DrawHitbox", true, "Draw Quill's hitbox");
+            drawLastDash = Plugin.Instance.Config.Bind("Data", "DrawLastDash", true, "Draw the wall or ceiling that was last dashed on");
+            drawOptimalAngles = Plugin.Instance.Config.Bind("Data", "DrawOptimalAngles", true, "Draw the directions to press for optimal turning speed");
+            drawSurfaces = Plugin.Instance.Config.Bind("Data", "DrawSurfaces", true, "Draw the exact boundary of walls, floors and ceilings");
+            minimalMode = Plugin.Instance.Config.Bind("Data", "MinimalMode", false, "Turn off all background art and details");
+
+            drawCageZones.SettingChanged += (sender, e) => ToggleCircleRenderers(drawCollectables.Value, drawCageZones.Value);
+            drawCollectables.SettingChanged += (sender, e) => ToggleCircleRenderers(drawCollectables.Value, drawCageZones.Value);
+            drawLastDash.SettingChanged += (sender, e) => DrawLastDash(drawLastDash.Value);
+            drawOptimalAngles.SettingChanged += (sender, e) => DrawOptimalAngles(drawOptimalAngles.Value);
+            drawSurfaces.SettingChanged += (sender, e) => ToggleSurfaceRenderers(drawSurfaces.Value);
             minimalMode.SettingChanged += (sender, e) => ToggleMinimalMode(minimalMode.Value);
         }
 
@@ -41,8 +65,8 @@ namespace TasBird
             Util.LevelStart += OnLevelStart;
             Util.PlayerUpdate += OnPlayerUpdate;
 
-            if (noDash is null)
-                noDash = CreateLineRenderer(Color.red, 4, true, 1);
+            if (lastDash is null)
+                lastDash = CreateLineRenderer(Color.red, 4, true, 1);
 
             if (optimalLeft is null)
                 optimalLeft = CreateLineRenderer(Color.cyan, 4, true, 4);
@@ -58,33 +82,14 @@ namespace TasBird
 
             if (minimalMode.Value)
                 ToggleMinimalMode(false);
-
-            foreach (var renderer in surfaces.Union(circles))
-            {
-                if (renderer is null) continue;
-                Destroy(renderer.gameObject);
-            }
-
-            surfaces.Clear();
-            circles.Clear();
+            ToggleSurfaceRenderers(false);
+            ToggleCircleRenderers(false, false);
         }
 
         private void OnPlayerUpdate(int frame)
         {
-            var player = MasterController.GetPlayer();
-            var lastDash = AccessTools.FieldRefAccess<Player, Vector>(player, "lastDash");
-            if (lastDash.Exists)
-            {
-                var points = ConnectedVectorsOfSameKind(lastDash).ToArray();
-                noDash.positionCount = points.Length;
-                noDash.SetPositions(points);
-            }
-            else
-            {
-                noDash.positionCount = 0;
-            }
-
-            UpdateOptimalAngles();
+            DrawLastDash(drawLastDash.Value);
+            DrawOptimalAngles(drawOptimalAngles.Value);
         }
 
         private void OnLevelStart(bool newScene)
@@ -126,11 +131,12 @@ namespace TasBird
             foreach (var endPoint in MasterController.GetObjects().GetObjects<EndPoint>())
                 endPoints.Add(endPoint.GridHitbox);
 
+            // The old LineRenderers got removed when the scene unloaded, so drop any references to them
             surfaces.Clear();
-            CreateSurfaceRenderers();
+            ToggleSurfaceRenderers(drawSurfaces.Value);
 
             circles.Clear();
-            CreateCircleRenderers();
+            ToggleCircleRenderers(drawCollectables.Value, drawCageZones.Value);
         }
 
         private void OnGUI()
@@ -138,13 +144,33 @@ namespace TasBird
             var player = MasterController.GetPlayer();
             if (player is null) return;
 
-            var timers = AccessTools.FieldRefAccess<Player, Player.Timer>(player, "timers");
+            if (drawHitbox.Value)
+            {
+                DrawBounds(player.Hitbox.Bounds, new Color(0, 1, 0, 0.5f));
+                DrawBounds(new Rectangle(player.Hitbox.Center, 4, 4), new Color(1, 1, 1, 1));
+            }
 
-            var cloakField = AccessTools.Field(typeof(Player), "cloak");
-            var powerField = AccessTools.Field(cloakField.FieldType, "power");
-            var power = (double)powerField.GetValue(cloakField.GetValue(player));
+            if (drawDeathzones.Value)
+                foreach (var deathZone in deathZones)
+                    DrawBounds(deathZone, new Color(1, 0, 0, 0.5f));
 
-            var text = $@"Frame: {player.framesInLevel}
+            if (drawCheckpoints.Value)
+                foreach (var checkpoint in checkpoints)
+                    DrawBounds(checkpoint, new Color(1, 1, 0, 0.3f));
+
+            if (drawEndPoints.Value)
+                foreach (var endPoint in endPoints)
+                    DrawBounds(endPoint, new Color(0, 1, 0, 0.3f));
+
+            if (drawDebugData.Value)
+            {
+                var timers = AccessTools.FieldRefAccess<Player, Player.Timer>(player, "timers");
+
+                var cloakField = AccessTools.Field(typeof(Player), "cloak");
+                var powerField = AccessTools.Field(cloakField.FieldType, "power");
+                var power = (double)powerField.GetValue(cloakField.GetValue(player));
+
+                var text = $@"Frame: {player.framesInLevel}
 Time Scale: {Time.Multiplier:0.00}
 Pos: {player.Position.x:0.00}, {player.Position.y:0.00}
 Vel: {player.Velocity.x:0.00}, {player.Velocity.y:0.00}
@@ -152,22 +178,29 @@ Speed: {player.Velocity.Length:0.00} at {Math.Atan2(player.Velocity.y, player.Ve
 Cloak: {timers.Get(Player.Timers.Cloak):0}, {Math.Round(power * 45.0):0}
 Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" : "None")}";
 
-            var timersText = "Timers:\n";
-            foreach (Player.Timers timer in Enum.GetValues(typeof(Player.Timers)))
-                if (timer != Player.Timers.CanWind)
-                    timersText += $"{timer}: {timers.Get(timer)}\n";
+                var timersText = "Timers:\n";
+                foreach (Player.Timers timer in Enum.GetValues(typeof(Player.Timers)))
+                    if (timer != Player.Timers.CanWind)
+                        timersText += $"{timer}: {timers.Get(timer)}\n";
 
-            DrawBounds(player.Hitbox.Bounds, new Color(0, 1, 0, 0.5f));
-            DrawBounds(new Rectangle(player.Hitbox.Center, 4, 4), new Color(1, 1, 1, 1));
-            foreach (var deathZone in deathZones)
-                DrawBounds(deathZone, new Color(1, 0, 0, 0.5f));
-            foreach (var checkpoint in checkpoints)
-                DrawBounds(checkpoint, new Color(1, 1, 0, 0.3f));
-            foreach (var endPoint in endPoints)
-                DrawBounds(endPoint, new Color(0, 1, 0, 0.3f));
+                DrawText(text, 10, 10);
+                DrawText(timersText, 10, 200);
+            }
+        }
 
-            DrawText(text, 10, 10);
-            DrawText(timersText, 10, 200);
+        private void DrawLastDash(bool on)
+        {
+            lastDash.positionCount = 0;
+            if (!on) return;
+
+            var player = MasterController.GetPlayer();
+            if (player is null) return;
+            var lastDashVector = AccessTools.FieldRefAccess<Player, Vector>(player, "lastDash");
+            if (!lastDashVector.Exists) return;
+
+            var points = ConnectedVectorsOfSameKind(lastDashVector).ToArray();
+            lastDash.positionCount = points.Length;
+            lastDash.SetPositions(points);
         }
 
         private static void ToggleMinimalMode(bool on)
@@ -181,8 +214,18 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
             }
         }
 
-        private void CreateSurfaceRenderers()
+        private void ToggleSurfaceRenderers(bool on)
         {
+            // Destroy old renderers
+            foreach (var renderer in surfaces)
+            {
+                if (renderer is null) continue;
+                Destroy(renderer.gameObject);
+            }
+            surfaces.Clear();
+
+            // Create new renderers
+            if (!on) return;
             var seen = new HashSet<Vector>();
             foreach (var vector in MasterController.GetCollisionVectors())
             {
@@ -212,36 +255,51 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
             }
         }
 
-        private void CreateCircleRenderers()
+        private void ToggleCircleRenderers(bool collectables, bool cageZones)
         {
-            foreach (var bird in MasterController.GetObjects().GetObjects<Collectibird>())
+            // Destroy old renderers
+            foreach (var renderer in circles)
             {
-                var lineRenderer = CreateLineRenderer(Color.white, 2, false, 0);
-                var spawn = AccessTools.FieldRefAccess<Collectibird, Coord>(bird, "spawn");
-                CreateCircleRenderer(lineRenderer, (float)spawn.x, (float)spawn.y, 64, 30);
-                circles.Add(lineRenderer);
+                if (renderer is null) continue;
+                Destroy(renderer.gameObject);
+            }
+            circles.Clear();
+
+            // Create new renderers
+            if (collectables)
+            {
+                foreach (var bird in MasterController.GetObjects().GetObjects<Collectibird>())
+                {
+                    var lineRenderer = CreateLineRenderer(Color.white, 2, false, 0);
+                    var spawn = AccessTools.FieldRefAccess<Collectibird, Coord>(bird, "spawn");
+                    CreateCircleRenderer(lineRenderer, (float)spawn.x, (float)spawn.y, 64, 30);
+                    circles.Add(lineRenderer);
+                }
+
+                foreach (var totem in MasterController.GetObjects().GetObjects<Totem>())
+                {
+                    var lineRenderer = CreateLineRenderer(Color.white, 2, false, 0);
+                    var position = totem.transform.position;
+                    CreateCircleRenderer(lineRenderer, position.x, position.y, 96, 30);
+                    circles.Add(lineRenderer);
+                }
             }
 
-            foreach (var totem in MasterController.GetObjects().GetObjects<Totem>())
+            if (cageZones)
             {
-                var lineRenderer = CreateLineRenderer(Color.white, 2, false, 0);
-                var position = totem.transform.position;
-                CreateCircleRenderer(lineRenderer, position.x, position.y, 96, 30);
-                circles.Add(lineRenderer);
-            }
-
-            foreach (var cage in MasterController.GetObjects().GetObjects<CageZone>())
-            {
-                var start = cage.Beginning;
-                var end = cage.End;
-                var lineRenderer = CreateLineRenderer(Color.white, 2, false, 0);
-                var position = start.transform.position;
-                CreateCircleRenderer(lineRenderer, position.x, position.y, start.radius, 30);
-                circles.Add(lineRenderer);
-                lineRenderer = CreateLineRenderer(Color.white, 2, false, 0);
-                position = end.transform.position;
-                CreateCircleRenderer(lineRenderer, position.x, position.y, end.radius, 30);
-                circles.Add(lineRenderer);
+                foreach (var cage in MasterController.GetObjects().GetObjects<CageZone>())
+                {
+                    var start = cage.Beginning;
+                    var end = cage.End;
+                    var lineRenderer = CreateLineRenderer(Color.white, 2, false, 0);
+                    var position = start.transform.position;
+                    CreateCircleRenderer(lineRenderer, position.x, position.y, start.radius, 30);
+                    circles.Add(lineRenderer);
+                    lineRenderer = CreateLineRenderer(Color.white, 2, false, 0);
+                    position = end.transform.position;
+                    CreateCircleRenderer(lineRenderer, position.x, position.y, end.radius, 30);
+                    circles.Add(lineRenderer);
+                }
             }
         }
 
@@ -315,15 +373,15 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
                 lineRenderer.SetPosition(i, new Vector3(x + r * Mathf.Sin(i * delta), y + r * Mathf.Cos(i * delta), 0));
         }
 
-        private void UpdateOptimalAngles()
+        private void DrawOptimalAngles(bool on)
         {
+            optimalLeft.positionCount = 0;
+            optimalRight.positionCount = 0;
+            if (!on) return;
+
             var player = MasterController.GetPlayer();
             if (player.Contact.Exists || player.Velocity.IsZero)
-            {
-                optimalLeft.positionCount = 0;
-                optimalRight.positionCount = 0;
                 return;
-            }
 
             var velocity = player.Velocity;
             var originalVelocityAngle = new Angle(velocity);
