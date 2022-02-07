@@ -29,8 +29,9 @@ namespace TasBird
 
         private LineRenderer lastDash;
         private LineRenderer optimalLeft, optimalRight;
+        private readonly List<LineRenderer> cageZones = new List<LineRenderer>();
+        private readonly List<LineRenderer> collectables = new List<LineRenderer>();
         private readonly List<LineRenderer> surfaces = new List<LineRenderer>();
-        private readonly List<LineRenderer> circles = new List<LineRenderer>();
         private readonly List<Rectangle> deathZones = new List<Rectangle>();
         private readonly List<Rectangle> checkpoints = new List<Rectangle>();
         private readonly List<Rectangle> endPoints = new List<Rectangle>();
@@ -49,11 +50,11 @@ namespace TasBird
             drawSurfaces = Plugin.Instance.Config.Bind("Data", "DrawSurfaces", true, "Draw the exact boundary of walls, floors and ceilings");
             minimalMode = Plugin.Instance.Config.Bind("Data", "MinimalMode", false, "Turn off all background art and details");
 
-            drawCageZones.SettingChanged += (sender, e) => ToggleCircleRenderers(drawCollectables.Value, drawCageZones.Value);
-            drawCollectables.SettingChanged += (sender, e) => ToggleCircleRenderers(drawCollectables.Value, drawCageZones.Value);
+            drawCageZones.SettingChanged += (sender, e) => ToggleCageZones(drawCageZones.Value);
+            drawCollectables.SettingChanged += (sender, e) => ToggleCollectables(drawCollectables.Value);
             drawLastDash.SettingChanged += (sender, e) => DrawLastDash(drawLastDash.Value);
             drawOptimalAngles.SettingChanged += (sender, e) => DrawOptimalAngles(drawOptimalAngles.Value);
-            drawSurfaces.SettingChanged += (sender, e) => ToggleSurfaceRenderers(drawSurfaces.Value);
+            drawSurfaces.SettingChanged += (sender, e) => ToggleSurfaces(drawSurfaces.Value);
             minimalMode.SettingChanged += (sender, e) => ToggleMinimalMode(minimalMode.Value);
         }
 
@@ -82,8 +83,9 @@ namespace TasBird
 
             if (minimalMode.Value)
                 ToggleMinimalMode(false);
-            ToggleSurfaceRenderers(false);
-            ToggleCircleRenderers(false, false);
+            ToggleSurfaces(false);
+            ToggleCageZones(false);
+            ToggleCollectables(false);
         }
 
         private void OnPlayerUpdate(int frame)
@@ -131,8 +133,9 @@ namespace TasBird
             foreach (var endPoint in MasterController.GetObjects().GetObjects<EndPoint>())
                 endPoints.Add(endPoint.GridHitbox);
 
-            ToggleSurfaceRenderers(drawSurfaces.Value);
-            ToggleCircleRenderers(drawCollectables.Value, drawCageZones.Value);
+            ToggleSurfaces(drawSurfaces.Value);
+            ToggleCageZones(drawCageZones.Value);
+            ToggleCollectables(drawCollectables.Value);
         }
 
         private void OnGUI()
@@ -210,7 +213,7 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
             }
         }
 
-        private void ToggleSurfaceRenderers(bool on)
+        private void ToggleSurfaces(bool on)
         {
             // Destroy old renderers
             foreach (var renderer in surfaces)
@@ -251,51 +254,63 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
             }
         }
 
-        private void ToggleCircleRenderers(bool collectables, bool cageZones)
+        private void ToggleCollectables(bool on)
         {
             // Destroy old renderers
-            foreach (var renderer in circles)
+            foreach (var renderer in collectables)
             {
                 if (renderer is null) continue;
                 Destroy(renderer.gameObject);
             }
-            circles.Clear();
+
+            collectables.Clear();
 
             // Create new renderers
-            if (collectables)
-            {
-                foreach (var bird in MasterController.GetObjects().GetObjects<Collectibird>())
-                {
-                    var lineRenderer = CreateLineRenderer(Color.white, 2, 0);
-                    var spawn = AccessTools.FieldRefAccess<Collectibird, Coord>(bird, "spawn");
-                    CreateCircleRenderer(lineRenderer, (float)spawn.x, (float)spawn.y, 64, 30);
-                    circles.Add(lineRenderer);
-                }
+            if (!on) return;
 
-                foreach (var totem in MasterController.GetObjects().GetObjects<Totem>())
-                {
-                    var lineRenderer = CreateLineRenderer(Color.white, 2, 0);
-                    var position = totem.transform.position;
-                    CreateCircleRenderer(lineRenderer, position.x, position.y, 96, 30);
-                    circles.Add(lineRenderer);
-                }
+            foreach (var bird in MasterController.GetObjects().GetObjects<Collectibird>())
+            {
+                var lineRenderer = CreateLineRenderer(Color.white, 2, 0);
+                var spawn = AccessTools.FieldRefAccess<Collectibird, Coord>(bird, "spawn");
+                CreateCircleRenderer(lineRenderer, (float)spawn.x, (float)spawn.y, 64, 30);
+                collectables.Add(lineRenderer);
             }
 
-            if (cageZones)
+            foreach (var totem in MasterController.GetObjects().GetObjects<Totem>())
             {
-                foreach (var cage in MasterController.GetObjects().GetObjects<CageZone>())
-                {
-                    var start = cage.Beginning;
-                    var end = cage.End;
-                    var lineRenderer = CreateLineRenderer(Color.white, 2, 0);
-                    var position = start.transform.position;
-                    CreateCircleRenderer(lineRenderer, position.x, position.y, start.radius, 30);
-                    circles.Add(lineRenderer);
-                    lineRenderer = CreateLineRenderer(Color.white, 2, 0);
-                    position = end.transform.position;
-                    CreateCircleRenderer(lineRenderer, position.x, position.y, end.radius, 30);
-                    circles.Add(lineRenderer);
-                }
+                var lineRenderer = CreateLineRenderer(Color.white, 2, 0);
+                var position = totem.transform.position;
+                CreateCircleRenderer(lineRenderer, position.x, position.y, 96, 30);
+                collectables.Add(lineRenderer);
+            }
+        }
+
+        private void ToggleCageZones(bool on)
+        {
+            // Destroy old renderers
+            foreach (var renderer in cageZones)
+            {
+                if (renderer is null) continue;
+                Destroy(renderer.gameObject);
+            }
+
+            cageZones.Clear();
+
+            // Create new renderers
+            if (!on) return;
+
+            foreach (var cage in MasterController.GetObjects().GetObjects<CageZone>())
+            {
+                var start = cage.Beginning;
+                var end = cage.End;
+                var lineRenderer = CreateLineRenderer(Color.white, 2, 0);
+                var position = start.transform.position;
+                CreateCircleRenderer(lineRenderer, position.x, position.y, start.radius, 30);
+                cageZones.Add(lineRenderer);
+                lineRenderer = CreateLineRenderer(Color.white, 2, 0);
+                position = end.transform.position;
+                CreateCircleRenderer(lineRenderer, position.x, position.y, end.radius, 30);
+                cageZones.Add(lineRenderer);
             }
         }
 
