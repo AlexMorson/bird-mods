@@ -11,6 +11,7 @@ namespace TasBird
     {
         private readonly ConfigEntry<bool> minimalMode;
         private readonly ConfigEntry<bool> drawCageZones;
+        private readonly ConfigEntry<bool> drawCamera;
         private readonly ConfigEntry<bool> drawCheckpoints;
         private readonly ConfigEntry<bool> drawCollectables;
         private readonly ConfigEntry<bool> drawDeathzones;
@@ -29,7 +30,9 @@ namespace TasBird
 
         private LineRenderer lastDash;
         private LineRenderer optimalLeft, optimalRight;
+        private readonly List<CameraZone> cameraZones = new List<CameraZone>();
         private readonly List<LineRenderer> cageZones = new List<LineRenderer>();
+        private readonly List<LineRenderer> cameraLinks = new List<LineRenderer>();
         private readonly List<LineRenderer> collectables = new List<LineRenderer>();
         private readonly List<LineRenderer> surfaces = new List<LineRenderer>();
         private readonly List<Rectangle> deathZones = new List<Rectangle>();
@@ -39,6 +42,7 @@ namespace TasBird
         private Data()
         {
             drawCageZones = Plugin.Instance.Config.Bind("Data", "DrawCageZones", true, "Draw the activation circles at the start and end of caged levels");
+            drawCamera = Plugin.Instance.Config.Bind("Data", "DrawCamera", false, "Draw the camera zones with offsets, and links between them");
             drawCheckpoints = Plugin.Instance.Config.Bind("Data", "DrawCheckpoints", true, "Draw the checkpoint activation zones");
             drawCollectables = Plugin.Instance.Config.Bind("Data", "DrawCollectables", true, "Draw the collection zone for birds and totems");
             drawDeathzones = Plugin.Instance.Config.Bind("Data", "DrawDeathzones", true, "Draw the deathzones");
@@ -51,6 +55,7 @@ namespace TasBird
             minimalMode = Plugin.Instance.Config.Bind("Data", "MinimalMode", false, "Turn off all background art and details");
 
             drawCageZones.SettingChanged += (sender, e) => ToggleCageZones(drawCageZones.Value);
+            drawCamera.SettingChanged += (sender, e) => ToggleCamera(drawCamera.Value);
             drawCollectables.SettingChanged += (sender, e) => ToggleCollectables(drawCollectables.Value);
             drawLastDash.SettingChanged += (sender, e) => DrawLastDash(drawLastDash.Value);
             drawOptimalAngles.SettingChanged += (sender, e) => DrawOptimalAngles(drawOptimalAngles.Value);
@@ -85,6 +90,7 @@ namespace TasBird
                 ToggleMinimalMode(false);
             ToggleSurfaces(false);
             ToggleCageZones(false);
+            ToggleCamera(false);
             ToggleCollectables(false);
         }
 
@@ -135,6 +141,7 @@ namespace TasBird
 
             ToggleSurfaces(drawSurfaces.Value);
             ToggleCageZones(drawCageZones.Value);
+            ToggleCamera(drawCamera.Value);
             ToggleCollectables(drawCollectables.Value);
         }
 
@@ -152,6 +159,15 @@ namespace TasBird
             if (drawDeathzones.Value)
                 foreach (var deathZone in deathZones)
                     DrawBounds(deathZone, new Color(1, 0, 0, 0.5f));
+
+            if (drawCamera.Value)
+            {
+                foreach (var zone in cameraZones)
+                {
+                    DrawBounds(zone.GridHitbox, new Color(0, 0, 1, 0.5f));
+                    DrawBounds(zone.Offset, new Color(0, 1, 1, 0.2f));
+                }
+            }
 
             if (drawCheckpoints.Value)
                 foreach (var checkpoint in checkpoints)
@@ -251,6 +267,48 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
                 lineRenderer.positionCount = points.Count;
                 lineRenderer.SetPositions(points.ToArray());
                 surfaces.Add(lineRenderer);
+            }
+        }
+
+        private void ToggleCamera(bool on)
+        {
+            // Destroy old renderers
+            cameraZones.Clear();
+            foreach (var renderer in cameraLinks)
+            {
+                if (renderer is null) continue;
+                Destroy(renderer.gameObject);
+            }
+            cameraLinks.Clear();
+
+            // Create new renderers
+            if (!on) return;
+
+            foreach (var zone in MasterController.GetObjects().GetObjects<CameraZone>())
+                cameraZones.Add(zone);
+
+            var linkColour = new Color(0, 0, 1, 0.5f);
+            var offsetColour = new Color(0, 1, 1, 0.5f);
+            foreach (var zone in cameraZones)
+            {
+                var hb = zone.GridHitbox;
+                var right = zone.Get(StitchableBox.Side.Right);
+                if (right != null)
+                {
+                    cameraLinks.Add(CreateLineRenderer(linkColour, 6, 0, hb.B, right.GridHitbox.UL));
+                    cameraLinks.Add(CreateLineRenderer(linkColour, 6, 0, hb.LR, right.GridHitbox.A));
+                }
+                var down = zone.Get(StitchableBox.Side.Down);
+                if (down != null)
+                {
+                    cameraLinks.Add(CreateLineRenderer(linkColour, 6, 0, hb.A, down.GridHitbox.UL));
+                    cameraLinks.Add(CreateLineRenderer(linkColour, 6, 0, hb.LR, down.GridHitbox.B));
+                }
+
+                cameraLinks.Add(CreateLineRenderer(offsetColour, 6, 0, hb.A, hb.Center + hb.Dimensions * zone.multiplier * new Coord(-0.5, -0.5) + zone.offset));
+                cameraLinks.Add(CreateLineRenderer(offsetColour, 6, 0, hb.B, hb.Center + hb.Dimensions * zone.multiplier * new Coord(0.5, 0.5) + zone.offset));
+                cameraLinks.Add(CreateLineRenderer(offsetColour, 6, 0, hb.LR, hb.Center + hb.Dimensions * zone.multiplier * new Coord(0.5, -0.5) + zone.offset));
+                cameraLinks.Add(CreateLineRenderer(offsetColour, 6, 0, hb.UL, hb.Center + hb.Dimensions * zone.multiplier * new Coord(-0.5, 0.5) + zone.offset));
             }
         }
 
@@ -372,6 +430,15 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
             lineRenderer.material = Material;
             lineRenderer.startColor = lineRenderer.endColor = color;
             lineRenderer.startWidth = lineRenderer.endWidth = width;
+            return lineRenderer;
+        }
+
+        private LineRenderer CreateLineRenderer(Color color, float width, int order, Coord from, Coord to)
+        {
+            var lineRenderer = CreateLineRenderer(color, width, order);
+            lineRenderer.positionCount = 2;
+            lineRenderer.SetPosition(0, from.V3);
+            lineRenderer.SetPosition(1, to.V3);
             return lineRenderer;
         }
 
