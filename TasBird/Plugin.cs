@@ -16,6 +16,7 @@ namespace TasBird
             gameObject.AddComponent<Camera>();
             gameObject.AddComponent<Replay>();
             gameObject.AddComponent<Link.Link>();
+            gameObject.AddComponent<Practise>();
         }
 
         public static Plugin Instance;
