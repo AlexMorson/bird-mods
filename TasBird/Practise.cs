@@ -9,6 +9,7 @@ namespace TasBird
 {
     public class Practise : MonoBehaviour
     {
+        private readonly ConfigEntry<bool> instantRestart;
         private readonly ConfigEntry<KeyboardShortcut> nextCheckpoint;
         private readonly ConfigEntry<KeyboardShortcut> prevCheckpoint;
 
@@ -17,6 +18,7 @@ namespace TasBird
         private Practise()
         {
             var config = Plugin.Instance.Config;
+            instantRestart = config.Bind("Practise", "InstantRestart", false, "Remove the delay when pressing restart");
             nextCheckpoint = config.Bind("Practise", "NextCheckpoint", new KeyboardShortcut(KeyCode.RightArrow, KeyCode.LeftControl), "Go to the next checkpoint");
             prevCheckpoint = config.Bind("Practise", "PrevCheckpoint", new KeyboardShortcut(KeyCode.LeftArrow, KeyCode.LeftControl), "Go to the previous checkpoint");
         }
@@ -27,6 +29,7 @@ namespace TasBird
                 OnNewSceneLoaded();
 
             Util.LevelStart += OnLevelStart;
+            Util.PlayerUpdate += OnPlayerUpdate;
         }
 
         private void OnLevelStart(bool newScene)
@@ -38,6 +41,16 @@ namespace TasBird
         private void OnNewSceneLoaded()
         {
             checkpoints = MasterController.GetObjects().ListOutAllObjects<Checkpoint>().OrderBy(c => c.priority).ThenBy(c => c.FinalSpawnPosition.x).ToList();
+        }
+
+        private void OnPlayerUpdate(int frame)
+        {
+            if (!instantRestart.Value) return;
+
+            var player = MasterController.GetPlayer();
+            player.CheckpointResetAvailable = true;
+            if (player.Killed)
+                GameObject.Find("Fader").GetComponent<FadeLoader>().currentFrameCount += 3;
         }
 
         private void Update()
