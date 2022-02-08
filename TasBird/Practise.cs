@@ -34,7 +34,16 @@ namespace TasBird
 
             var currentPriority = player.Checkpoint != null ? player.Checkpoint.priority : 0;
             foreach (var checkpoint in checkpoints)
-                checkpoint.passed = !collectCheckpoints.Value || checkpoint.priority < currentPriority;
+            {
+                var passed = !collectCheckpoints.Value || checkpoint.priority < currentPriority;
+                var current = checkpoint == player.Checkpoint;
+                checkpoint.passed = passed;
+                if (checkpoint.LanternSprite != null)
+                    checkpoint.LanternSprite.sprite =
+                        current || !passed ? checkpoint.visualLantern : checkpoint.visualClosed;
+                if (checkpoint.FlameObject != null)
+                    checkpoint.FlameObject.SetActive(current);
+            }
         }
 
         private void Awake()
