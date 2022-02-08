@@ -16,13 +16,12 @@
 2. Extract it into the game folder so that `BepInEx/` is beside `TheKingsBird_Data/`.
 3. Run the game once to let BepInEx set itself up.
 4. Download `TasBird.dll` from the releases page and put it in `BepInEx/plugins/`.
-5. (optional) Install the [ConfigurationManager](https://github.com/BepInEx/BepInEx.ConfigurationManager/releases)
-   plugin to get a config menu bound to F1.
+5. (optional) Install the [ConfigurationManager](https://github.com/BepInEx/BepInEx.ConfigurationManager/releases) plugin to get a config menu bound to F1.
 
 ## Development
 
 1. Install BepInEx as described above.
 2. Copy `BepInEx/core/*.dll` and `TheKingsBird_Data/Managed/*.dll` into `Lib/`.
-3. Set `Logging.Console.Enabled = true` in `BenInEx/config/BenInEx.cfg` to help with debugging.
-4. (optional) Install the [ScriptEngine](https://github.com/BepInEx/BepInEx.Debug/releases) plugin to hot-load mods
-   placed in `BepInEx/scripts/` by pressing F6.
+3. Download [NStrip](https://github.com/BepInEx/NStrip/releases) and run `NStrip.exe -n -o -p Lib/Assembly-CSharp.dll` to make all types, methods, properties and fields public.
+4. Set `Logging.Console.Enabled = true` in `BenInEx/config/BenInEx.cfg` to help with debugging.
+5. Install the [ScriptEngine](https://github.com/BepInEx/BepInEx.Debug/releases) plugin to hot-load mods placed in `BepInEx/scripts/` by pressing F6. This avoids having to restart the game to test changes.

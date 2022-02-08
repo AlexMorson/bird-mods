@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using BepInEx.Configuration;
-using HarmonyLib;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -179,24 +178,18 @@ namespace TasBird
 
             if (drawDebugData.Value)
             {
-                var timers = AccessTools.FieldRefAccess<Player, Player.Timer>(player, "timers");
-
-                var cloakField = AccessTools.Field(typeof(Player), "cloak");
-                var powerField = AccessTools.Field(cloakField.FieldType, "power");
-                var power = (double)powerField.GetValue(cloakField.GetValue(player));
-
                 var text = $@"Frame: {player.framesInLevel}
 Time Scale: {Time.Multiplier:0.00}
 Pos: {player.Position.x:0.00}, {player.Position.y:0.00}
 Vel: {player.Velocity.x:0.00}, {player.Velocity.y:0.00}
 Speed: {player.Velocity.Length:0.00} at {Math.Atan2(player.Velocity.y, player.Velocity.x) * 180 / Math.PI:0.0}°
-Cloak: {timers.Get(Player.Timers.Cloak):0}, {Math.Round(power * 45.0):0}
+Cloak: {player.timers.Get(Player.Timers.Cloak):0}, {Math.Round(player.cloak.power * 45.0):0}
 Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" : "None")}";
 
                 var timersText = "Timers:\n";
                 foreach (Player.Timers timer in Enum.GetValues(typeof(Player.Timers)))
                     if (timer != Player.Timers.CanWind)
-                        timersText += $"{timer}: {timers.Get(timer)}\n";
+                        timersText += $"{timer}: {player.timers.Get(timer)}\n";
 
                 DrawText(text, 10, 10);
                 DrawText(timersText, 10, 200);
@@ -210,10 +203,9 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
 
             var player = MasterController.GetPlayer();
             if (player is null) return;
-            var lastDashVector = AccessTools.FieldRefAccess<Player, Vector>(player, "lastDash");
-            if (!lastDashVector.Exists) return;
+            if (!player.lastDash.Exists) return;
 
-            var points = ConnectedVectorsOfSameKind(lastDashVector).ToArray();
+            var points = ConnectedVectorsOfSameKind(player.lastDash).ToArray();
             lastDash.positionCount = points.Length;
             lastDash.SetPositions(points);
         }
@@ -329,8 +321,7 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
             foreach (var bird in MasterController.GetObjects().GetObjects<Collectibird>())
             {
                 var lineRenderer = CreateLineRenderer(Color.white, 2, 0);
-                var spawn = AccessTools.FieldRefAccess<Collectibird, Coord>(bird, "spawn");
-                CreateCircleRenderer(lineRenderer, (float)spawn.x, (float)spawn.y, 64, 30);
+                CreateCircleRenderer(lineRenderer, (float)bird.spawn.x, (float)bird.spawn.y, 64, 30);
                 collectables.Add(lineRenderer);
             }
 

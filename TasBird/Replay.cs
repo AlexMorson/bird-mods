@@ -1,6 +1,5 @@
 ﻿using System;
 using BepInEx.Configuration;
-using HarmonyLib;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
@@ -68,61 +67,18 @@ namespace TasBird
             var input = MasterController.GetInput();
             if (!input.IsReplay) return;
 
-            var axesField = AccessTools.Field(typeof(InputManager), "axes");
-            var axesItemProperty = AccessTools.Property(axesField.FieldType, "Item");
+            input.isReplay = false;
 
-            var axisChannelGenericType = AccessTools.Inner(typeof(InputManager), "AxisChannel");
-            var axisChannelType = axisChannelGenericType.MakeGenericType(typeof(InputManager.Key),
-                typeof(InputManager.Axis), typeof(InputManager.KeyComparer), typeof(InputManager.AxisComparer));
-            var axisChannelConstructor = AccessTools.Constructor(axisChannelType);
-            var axisBufferField = AccessTools.Field(axisChannelType, "buffer");
-
-            var axes = axesField.GetValue(input);
+            // Convert AxisReplay into AxisChannel
             foreach (InputManager.Axis axis in Enum.GetValues(typeof(InputManager.Axis)))
-            {
-                // Get AxisReplay from axes[axis]
-                var axisReplay = axesItemProperty.GetGetMethod().Invoke(axes, new object[] { axis });
+                input.axes[axis] = new InputManager.AxisChannel { buffer = input.axes[axis].buffer };
 
-                // Create new InputManager.AxesChannel
-                var axisChannel = axisChannelConstructor.Invoke(null, new object[] { });
-
-                // axisChannel.buffer = axisReplay.buffer
-                axisBufferField.SetValue(axisChannel, axisBufferField.GetValue(axisReplay));
-
-                // Set axes[axis] to the AxesChannel
-                axesItemProperty.GetSetMethod().Invoke(axes, new[] { axis, axisChannel });
-            }
-
-            var buttonsField = AccessTools.Field(typeof(InputManager), "buttons");
-            var buttonsItemProperty = AccessTools.Property(buttonsField.FieldType, "Item");
-
-            var buttonChannelGenericType = AccessTools.Inner(typeof(InputManager), "ButtonChannel");
-            var buttonChannelType = buttonChannelGenericType.MakeGenericType(typeof(InputManager.Key),
-                typeof(InputManager.Axis), typeof(InputManager.KeyComparer), typeof(InputManager.AxisComparer));
-            var buttonChannelConstructor = AccessTools.Constructor(buttonChannelType);
-            var buttonBufferField = AccessTools.Field(buttonChannelType, "buffer");
-
-            var buttons = buttonsField.GetValue(input);
+            // Convert ButtonReplay into ButtonChannel
             foreach (InputManager.Key key in Enum.GetValues(typeof(InputManager.Key)))
-            {
-                // Get ButtonReplay from buttons[key]
-                var buttonReplay = buttonsItemProperty.GetGetMethod().Invoke(buttons, new object[] { key });
+                input.buttons[key] = new InputManager.ButtonChannel { buffer = input.buttons[key].buffer };
 
-                // Create new InputManager.ButtonChannel
-                var buttonChannel = buttonChannelConstructor.Invoke(null, new object[] { });
-
-                // buttonChannel.buffer = buttonReplay.buffer
-                buttonBufferField.SetValue(buttonChannel, buttonBufferField.GetValue(buttonReplay));
-
-                // Set buttons[key] to the ButtonChannel
-                buttonsItemProperty.GetSetMethod().Invoke(buttons, new[] { key, buttonChannel });
-            }
-
-            // Bind the input channels to the current control layout
-            var setupControls = AccessTools.Method(typeof(InputManager), "SetupControls");
-            setupControls.Invoke(input, new object[] { input.CurrentPeripheral, true });
-
-            AccessTools.FieldRefAccess<InputManager, bool>(input, "isReplay") = false;
+            // Bind the new input channels to the current control layout
+            input.SetupControls(input.CurrentPeripheral, true);
         }
 
         public static void Save()
