@@ -19,6 +19,7 @@ namespace TasBird
         {
             SceneManager.sceneLoaded += OnSceneLoaded;
             Harmony.PatchAll(typeof(PlayerUpdatePatch));
+            Harmony.PatchAll(typeof(CheckpointFullResetPatch));
         }
 
         private void OnDestroy()
@@ -62,6 +63,15 @@ namespace TasBird
         {
             if (__instance is Player player)
                 Util.OnPlayerUpdate(player.framesInLevel);
+        }
+    }
+
+    [HarmonyPatch(typeof(Checkpoint), "FullResetCheckpoints")]
+    internal static class CheckpointFullResetPatch
+    {
+        private static void Postfix()
+        {
+            Util.OnLevelReload();
         }
     }
 }

@@ -9,6 +9,7 @@ namespace TasBird
 {
     public class Practise : MonoBehaviour
     {
+        private readonly ConfigEntry<bool> collectCheckpoints;
         private readonly ConfigEntry<bool> instantRestart;
         private readonly ConfigEntry<KeyboardShortcut> nextCheckpoint;
         private readonly ConfigEntry<KeyboardShortcut> prevCheckpoint;
@@ -18,15 +19,28 @@ namespace TasBird
         private Practise()
         {
             var config = Plugin.Instance.Config;
+            collectCheckpoints = config.Bind("Practise", "CollectCheckpoints", true, "Whether touching a checkpoint should collect it");
             instantRestart = config.Bind("Practise", "InstantRestart", false, "Remove the delay when pressing restart");
             nextCheckpoint = config.Bind("Practise", "NextCheckpoint", new KeyboardShortcut(KeyCode.RightArrow, KeyCode.LeftControl), "Go to the next checkpoint");
             prevCheckpoint = config.Bind("Practise", "PrevCheckpoint", new KeyboardShortcut(KeyCode.LeftArrow, KeyCode.LeftControl), "Go to the previous checkpoint");
+
+            collectCheckpoints.SettingChanged += (sender, e) => UpdateCheckpointState();
+        }
+
+        private void UpdateCheckpointState()
+        {
+            var player = MasterController.GetPlayer();
+            if (player is null) return;
+
+            var currentPriority = player.Checkpoint != null ? player.Checkpoint.priority : 0;
+            foreach (var checkpoint in checkpoints)
+                checkpoint.passed = !collectCheckpoints.Value || checkpoint.priority < currentPriority;
         }
 
         private void Awake()
         {
             if (SceneManager.GetActiveScene() != LevelManager.ManagementScene)
-                OnNewSceneLoaded();
+                OnLevelStart(true);
 
             Util.LevelStart += OnLevelStart;
             Util.PlayerUpdate += OnPlayerUpdate;
@@ -34,13 +48,8 @@ namespace TasBird
 
         private void OnLevelStart(bool newScene)
         {
-            if (newScene)
-                OnNewSceneLoaded();
-        }
-
-        private void OnNewSceneLoaded()
-        {
             checkpoints = MasterController.GetObjects().ListOutAllObjects<Checkpoint>().OrderBy(c => c.priority).ThenBy(c => c.FinalSpawnPosition.x).ToList();
+            UpdateCheckpointState();
         }
 
         private void OnPlayerUpdate(int frame)
@@ -73,6 +82,7 @@ namespace TasBird
 
             Checkpoint.SaveCheckpoints(checkpoints[newIndex], player);
             player.LoadCheckpoint();
+            UpdateCheckpointState();
         }
     }
 }
