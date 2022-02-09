@@ -13,6 +13,7 @@ namespace TasBird
         private readonly ConfigEntry<bool> instantRestart;
         private readonly ConfigEntry<KeyboardShortcut> nextCheckpoint;
         private readonly ConfigEntry<KeyboardShortcut> prevCheckpoint;
+        private readonly ConfigEntry<KeyboardShortcut> setPosition;
 
         private List<Checkpoint> checkpoints = new List<Checkpoint>();
 
@@ -23,6 +24,7 @@ namespace TasBird
             instantRestart = config.Bind("Practise", "InstantRestart", false, "Remove the delay when pressing restart");
             nextCheckpoint = config.Bind("Practise", "NextCheckpoint", new KeyboardShortcut(KeyCode.RightArrow, KeyCode.LeftControl), "Go to the next checkpoint");
             prevCheckpoint = config.Bind("Practise", "PrevCheckpoint", new KeyboardShortcut(KeyCode.LeftArrow, KeyCode.LeftControl), "Go to the previous checkpoint");
+            setPosition = config.Bind("Practise", "SetPosition", new KeyboardShortcut(KeyCode.Mouse1), "Set Quill's position");
 
             collectCheckpoints.SettingChanged += (sender, e) => UpdateCheckpointState();
         }
@@ -77,6 +79,13 @@ namespace TasBird
                 LoadCheckpoint(1);
             if (prevCheckpoint.Value.IsDown())
                 LoadCheckpoint(-1);
+            if (setPosition.Value.IsDown())
+            {
+                var player = MasterController.GetPlayer();
+                player.Position = Camera.MouseWorld;
+                player.Velocity = Coord.Zero;
+                player.Contact = Vector.Null;
+            }
         }
 
         private void LoadCheckpoint(int offset)
