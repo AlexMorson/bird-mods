@@ -12,6 +12,7 @@ namespace TasBird
         private readonly ConfigEntry<bool> drawCageZones;
         private readonly ConfigEntry<bool> drawCamera;
         private readonly ConfigEntry<bool> drawCheckpoints;
+        private readonly ConfigEntry<bool> drawCloakData;
         private readonly ConfigEntry<bool> drawCollectables;
         private readonly ConfigEntry<bool> drawDeathzones;
         private readonly ConfigEntry<bool> drawDebugData;
@@ -29,6 +30,9 @@ namespace TasBird
 
         private LineRenderer lastDash;
         private LineRenderer optimalLeft, optimalRight;
+        private LineRenderer cloakPower, cloakTimer;
+        private LineRenderer cloakPowerBack, cloakTimerBack;
+        private LineRenderer leftZone, rightZone;
         private readonly List<CameraZone> cameraZones = new List<CameraZone>();
         private readonly List<LineRenderer> cageZones = new List<LineRenderer>();
         private readonly List<LineRenderer> cameraLinks = new List<LineRenderer>();
@@ -43,6 +47,7 @@ namespace TasBird
             drawCageZones = Plugin.Instance.Config.Bind("Data", "DrawCageZones", true, "Draw the activation circles at the start and end of caged levels");
             drawCamera = Plugin.Instance.Config.Bind("Data", "DrawCamera", false, "Draw the camera zones with offsets, and links between them");
             drawCheckpoints = Plugin.Instance.Config.Bind("Data", "DrawCheckpoints", true, "Draw the checkpoint activation zones");
+            drawCloakData = Plugin.Instance.Config.Bind("Data", "DrawCloakData", true, "Draw bars representing the cloak power and timer, and the left and right cloak zones");
             drawCollectables = Plugin.Instance.Config.Bind("Data", "DrawCollectables", true, "Draw the collection zone for birds and totems");
             drawDeathzones = Plugin.Instance.Config.Bind("Data", "DrawDeathzones", true, "Draw the deathzones");
             drawDebugData = Plugin.Instance.Config.Bind("Data", "DrawDebugData", true, "Draw debug data");
@@ -55,6 +60,7 @@ namespace TasBird
 
             drawCageZones.SettingChanged += (sender, e) => ToggleCageZones(drawCageZones.Value);
             drawCamera.SettingChanged += (sender, e) => ToggleCamera(drawCamera.Value);
+            drawCloakData.SettingChanged += (sender, e) => DrawCloakData(drawCloakData.Value);
             drawCollectables.SettingChanged += (sender, e) => ToggleCollectables(drawCollectables.Value);
             drawLastDash.SettingChanged += (sender, e) => DrawLastDash(drawLastDash.Value);
             drawOptimalAngles.SettingChanged += (sender, e) => DrawOptimalAngles(drawOptimalAngles.Value);
@@ -78,6 +84,24 @@ namespace TasBird
 
             if (optimalRight is null)
                 optimalRight = CreateLineRenderer(Color.cyan, 4, 4);
+
+            if (cloakPower is null)
+                cloakPower = CreateLineRenderer(Color.cyan, 4, 4);
+
+            if (cloakTimer is null)
+                cloakTimer = CreateLineRenderer(Color.magenta, 4, 4);
+
+            if (cloakPowerBack is null)
+                cloakPowerBack = CreateLineRenderer(Color.black, 4, 3);
+
+            if (cloakTimerBack is null)
+                cloakTimerBack = CreateLineRenderer(Color.black, 4, 3);
+
+            if (leftZone is null)
+                leftZone = CreateLineRenderer(Color.blue, 2, 2);
+
+            if (rightZone is null)
+                rightZone = CreateLineRenderer(Color.red, 2, 2);
         }
 
         private void OnDestroy()
@@ -95,6 +119,7 @@ namespace TasBird
 
         private void OnPlayerUpdate(int frame)
         {
+            DrawCloakData(drawCloakData.Value);
             DrawLastDash(drawLastDash.Value);
             DrawOptimalAngles(drawOptimalAngles.Value);
         }
@@ -208,6 +233,56 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
             var points = ConnectedVectorsOfSameKind(player.lastDash).ToArray();
             lastDash.positionCount = points.Length;
             lastDash.SetPositions(points);
+        }
+
+        private void DrawCloakData(bool on)
+        {
+            cloakPower.positionCount = 0;
+            cloakTimer.positionCount = 0;
+            cloakPowerBack.positionCount = 0;
+            cloakTimerBack.positionCount = 0;
+            leftZone.positionCount = 0;
+            rightZone.positionCount = 0;
+            if (!on) return;
+
+            var player = MasterController.GetPlayer();
+            if (player is null) return;
+
+            var power = (float)player.cloak.power;
+            var timer = Mathf.Max(0f, player.timers.Get(Player.Timers.Cloak)) / 45;
+
+            const float width = 80;
+            var start = player.Position.V3 + new Vector3(-width / 2, 50);
+
+            cloakPower.positionCount = 2;
+            cloakPower.SetPosition(0, start);
+            cloakPower.SetPosition(1, start + width * power * Vector3.right);
+            cloakPowerBack.positionCount = 2;
+            cloakPowerBack.SetPosition(0, start);
+            cloakPowerBack.SetPosition(1, start + width * Vector3.right);
+
+            start += new Vector3(0, 8);
+
+            cloakTimer.positionCount = 2;
+            cloakTimer.SetPosition(0, start);
+            cloakTimer.SetPosition(1, start + width * timer * Vector3.right);
+            cloakTimerBack.positionCount = 2;
+            cloakTimerBack.SetPosition(0, start);
+            cloakTimerBack.SetPosition(1, start + width * Vector3.right);
+
+            var left = (float)player.cloak.leftZone;
+            var right = (float)player.cloak.rightZone;
+            var top = Camera.Position.y + 1e6f;
+            var bottom = Camera.Position.y - 1e6f;
+
+            leftZone.positionCount = 2;
+            leftZone.SetPosition(0, new Vector3(left, bottom));
+            leftZone.SetPosition(1, new Vector3(left, top));
+
+            rightZone.positionCount = 2;
+            rightZone.SetPosition(0, new Vector3(right, bottom));
+            rightZone.SetPosition(1, new Vector3(right, top));
+
         }
 
         private static void ToggleMinimalMode(bool on)
