@@ -6,7 +6,7 @@ namespace TasBird.Link
     {
         public override void Execute()
         {
-            Time.TogglePause();
+            Time.Paused = !Time.Paused;
         }
 
         public static void Register() => CommandParsers.Add("TogglePause", Parse);

@@ -23,7 +23,22 @@ namespace TasBird
         private static bool fastForwarding;
         private static int fastForwardUntil;
 
-        public static float Multiplier => lastTimeScale / 0.8f;
+        public static float Multiplier
+        {
+            get => lastTimeScale / 0.8f;
+            set
+            {
+                var scale = value * 0.8f;
+                if (0.01f < scale && scale < 100f) lastTimeScale = scale;
+                if (!Paused) UnityTime.timeScale = lastTimeScale;
+            }
+        }
+
+        public static bool Paused
+        {
+            get => UnityTime.timeScale == 0f;
+            set => UnityTime.timeScale = value ? 0f : lastTimeScale;
+        }
 
         private Time()
         {
@@ -58,7 +73,7 @@ namespace TasBird
 
         private void Update()
         {
-            if (Input.GetKeyDown(togglePause.Value.MainKey)) TogglePause();
+            if (Input.GetKeyDown(togglePause.Value.MainKey)) Paused = !Paused;
             if (Input.GetKeyDown(stepFrame.Value.MainKey)) StepFrame();
             if (Input.GetKeyDown(speedUp.Value.MainKey)) SpeedUp();
             if (Input.GetKeyDown(slowDown.Value.MainKey)) SlowDown();
@@ -99,24 +114,9 @@ namespace TasBird
             ToggleFlowEffects(UnityTime.timeScale < 2);
         }
 
-        public static void TogglePause()
-        {
-            UnityTime.timeScale = UnityTime.timeScale > 0 ? 0f : lastTimeScale;
-        }
+        public static void SpeedUp() => Multiplier *= Mathf.Sqrt(2);
 
-        public static void SpeedUp()
-        {
-            if (lastTimeScale > 100 / Mathf.Sqrt(2)) return;
-            UnityTime.timeScale *= Mathf.Sqrt(2);
-            lastTimeScale *= Mathf.Sqrt(2);
-        }
-
-        public static void SlowDown()
-        {
-            if (lastTimeScale < 0.01) return;
-            UnityTime.timeScale /= Mathf.Sqrt(2);
-            lastTimeScale /= Mathf.Sqrt(2);
-        }
+        public static void SlowDown() => Multiplier /= Mathf.Sqrt(2);
 
         public static void StepFrame()
         {
