@@ -74,6 +74,7 @@
     <Compile Include="Practise.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Replay.cs" />
+    <Compile Include="StateManager.cs" />
     <Compile Include="Time.cs" />
     <Compile Include="Util.cs" />
   </ItemGroup>
