@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
 using BepInEx.Configuration;
+using HarmonyLib;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
@@ -13,6 +16,8 @@ namespace TasBird
         private static ConfigEntry<KeyboardShortcut> takeOver;
         private static ConfigEntry<KeyboardShortcut> saveReplay;
 
+        private static readonly Harmony Harmony = new Harmony("com.alexmorson.tasbird.replay");
+
         private void Awake()
         {
             var config = Plugin.Instance.Config;
@@ -20,6 +25,13 @@ namespace TasBird
                 "Take over a currently running replay");
             saveReplay = config.Bind("Replay", "SaveReplay", new KeyboardShortcut(KeyCode.S, KeyCode.LeftControl),
                 "Save a replay formed by the inputs entered up to this point");
+
+            Harmony.PatchAll(typeof(LoadReplayBuffersPatch));
+        }
+
+        private void OnDestroy()
+        {
+            Harmony.UnpatchSelf();
         }
 
         private void Update()
@@ -57,6 +69,44 @@ namespace TasBird
             }
 
             Time.FastForwardUntil(breakpoint);
+        }
+
+        public static void LoadReplayBuffers(ReplayData buffers, uint breakpoint = 0)
+        {
+            Debug.Log("LoadReplayBuffers");
+
+            var input = MasterController.GetInput();
+            input.isReplay = true;
+
+            foreach (var axis in buffers.axisBuffers.Keys)
+            {
+                var axisBuffer = new List<RootInputManager.Entry<InputManager.AxisChannel.State>>();
+                foreach (var time in buffers.axisBuffers[axis].Keys)
+                {
+                    var state = (InputManager.AxisChannel.State)buffers.axisBuffers[axis][time];
+                    axisBuffer.Add(new RootInputManager.Entry<InputManager.AxisChannel.State>(state, time));
+                }
+
+                var axisReplay = new InputManager.AxisReplay(axisBuffer);
+                axisReplay.buffer.Clear(); // Remove default (0, Release) entry
+                axisReplay.Update(breakpoint);
+                input.axes[input.ToAxis(axis)] = axisReplay;
+            }
+
+            foreach (var key in buffers.buttonBuffers.Keys)
+            {
+                var buttonBuffer = new List<RootInputManager.Entry<InputManager.ButtonChannel.State>>();
+                foreach (var time in buffers.buttonBuffers[key].Keys)
+                {
+                    var state = (InputManager.ButtonChannel.State)buffers.buttonBuffers[key][time];
+                    buttonBuffer.Add(new RootInputManager.Entry<InputManager.ButtonChannel.State>(state, time));
+                }
+
+                var buttonReplay = new InputManager.ButtonReplay(buttonBuffer);
+                buttonReplay.buffer.Clear(); // Remove default (0, Release) entry
+                buttonReplay.Update(breakpoint);
+                input.buttons[input.ToKey(key)] = buttonReplay;
+            }
         }
 
         public static void TakeOver()
@@ -106,6 +156,22 @@ namespace TasBird
             var frame = MasterController.GetPlayer().framesInLevel;
 
             SaveReplay?.Invoke(levelName, replayBuffer, frame);
+        }
+    }
+
+    [HarmonyPatch]
+    internal static class LoadReplayBuffersPatch
+    {
+        private static MethodBase TargetMethod()
+        {
+            return typeof(BaseInputManager<InputManager.Key, InputManager.Axis, InputManager.KeyComparer,
+                InputManager.AxisComparer>).GetMethod("LoadReplayBuffers");
+        }
+
+        private static bool Prefix(ReplayData rm)
+        {
+            Replay.LoadReplayBuffers(rm);
+            return false;
         }
     }
 }
