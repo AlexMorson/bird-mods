@@ -125,7 +125,7 @@ namespace TasBird
             DisableFrameSkip();
         }
 
-        public static void FastForwardUntil(int frame)
+        public static void FastForwardUntil(int frame, bool immediate = false)
         {
             UnityTime.timeScale = 0.8f;
 
@@ -136,7 +136,11 @@ namespace TasBird
                 return;
             }
 
-            willFastForward = true;
+            if (immediate)
+                fastForwarding = true;
+            else
+                willFastForward = true;
+
             fastForwardUntil = frame;
             DisableFrameSkip();
         }
