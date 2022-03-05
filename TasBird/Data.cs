@@ -286,7 +286,7 @@ Contact Angle: {(player.Contact.Exists ? $"{(float)player.Contact.Angle:0.0}°" 
                 if (layer.name == "PlayerLayer")
                     layer.ToggleArtVisibility(!on);
                 else
-                    layer.ToggleLayerVisibility(!on);
+                    layer.gameObject.SetActive(!on);
             }
         }
 
