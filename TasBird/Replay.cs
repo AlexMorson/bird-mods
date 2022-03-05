@@ -18,6 +18,8 @@ namespace TasBird
 
         private static readonly Harmony Harmony = new Harmony("com.alexmorson.tasbird.replay");
 
+        private static State? levelStartState;
+
         private void Awake()
         {
             var config = Plugin.Instance.Config;
@@ -25,6 +27,8 @@ namespace TasBird
                 "Take over a currently running replay");
             saveReplay = config.Bind("Replay", "SaveReplay", new KeyboardShortcut(KeyCode.S, KeyCode.LeftControl),
                 "Save a replay formed by the inputs entered up to this point");
+
+            Util.LevelStart += OnLevelStart;
 
             Harmony.PatchAll(typeof(LoadReplayBuffersPatch));
         }
@@ -34,13 +38,18 @@ namespace TasBird
             Harmony.UnpatchSelf();
         }
 
+        private static void OnLevelStart(bool newScene)
+        {
+            levelStartState = State.Save();
+        }
+
         private void Update()
         {
             if (takeOver.Value.IsDown()) TakeOver();
             if (saveReplay.Value.IsDown()) Save();
         }
 
-        public static void Load(string levelName, string replayBuffer, int breakpoint)
+        public static void Load(string levelName, string replayString, int breakpoint)
         {
             if (SceneManager.GetActiveScene() == LevelManager.ManagementScene)
                 return;
@@ -48,27 +57,45 @@ namespace TasBird
             if (!LevelNames.NameExists(levelName)) return;
             var levelFile = LevelNames.NameToFile(levelName);
 
+            // Hide all UI elements
             LeaderBoard.Singleton.ToggleVisible(false);
             LevelInfoDisplay.uiDisplay.SetActive(false);
             if (PauseMenu.IsPaused) PauseMenu.instance.ToggleMenu();
 
-            PlayerPip.Instance.QueueReplay(replayBuffer, Application.version);
-
-            if (levelFile == SceneManager.GetActiveScene().name)
+            if (levelFile == SceneManager.GetActiveScene().name && !MasterController.GetPlayer().ending)
             {
-                // Bit hacky, but avoids reloading the scene
-                Checkpoint.FullResetCheckpoints(MasterController.GetPlayer());
-                ++MasterController.GetPlayer().framesInLevel;
-                MasterController.GetInput().OnFixedUpdate();
-                Util.OnLevelReload();
-                GameObject.Find("Fader").GetComponent<FadeLoader>().Fade(0);
-            }
-            else
-            {
-                SceneChanger.Instance.ChangeScene(levelFile);
+                var replayBuffers = default(ReplayData);
+                replayBuffers.StringToBuffer(replayString);
+
+                // Try to save some fast-forwarding by starting from an existing state
+                var chosenState = levelStartState;
+                foreach (var state in StateManager.States.Values)
+                {
+                    if (state.Frame <= breakpoint && (!chosenState.HasValue || state.Frame > chosenState.Value.Frame) &&
+                        state.IsPrefixOf(replayBuffers))
+                    {
+                        chosenState = state;
+                    }
+                }
+
+                if (chosenState.HasValue)
+                {
+                    // Load the state, overwrite the inputs and fast-forward
+                    chosenState.Value.Load();
+                    LoadReplayBuffers(replayBuffers, chosenState.Value.Frame);
+                    if (chosenState.Value.Frame == breakpoint)
+                        Time.Paused = true;
+                    else
+                        Time.FastForwardUntil(breakpoint, true);
+
+                    return;
+                }
             }
 
+            // No candidate state exists, so just reload the scene
+            PlayerPip.Instance.QueueReplay(replayString, Application.version);
             Time.FastForwardUntil(breakpoint);
+            SceneChanger.Instance.ChangeScene(levelFile);
         }
 
         public static void LoadReplayBuffers(ReplayData buffers, uint breakpoint = 0)
