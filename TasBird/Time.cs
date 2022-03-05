@@ -55,7 +55,7 @@ namespace TasBird
 
         private void Awake()
         {
-            Util.LevelStart += OnLevelStart;
+            Util.SceneLoaded += OnSceneLoaded;
             Util.PlayerUpdate += OnPlayerUpdate;
             Harmony.PatchAll(typeof(ValidateSettingsPatch));
             Harmony.PatchAll(typeof(TogglePlayerLockPatch));
@@ -66,7 +66,7 @@ namespace TasBird
             UnityTime.timeScale = 0.8f;
             ToggleFlowEffects(true);
 
-            Util.LevelStart -= OnLevelStart;
+            Util.SceneLoaded -= OnSceneLoaded;
             Util.PlayerUpdate -= OnPlayerUpdate;
             Harmony.UnpatchSelf();
         }
@@ -79,7 +79,7 @@ namespace TasBird
             if (Input.GetKeyDown(slowDown.Value.MainKey)) SlowDown();
         }
 
-        private static void OnLevelStart(bool newScene)
+        private static void OnSceneLoaded()
         {
             if (willFastForward)
             {

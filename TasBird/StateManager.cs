@@ -13,13 +13,17 @@ namespace TasBird
 
         private StateManager()
         {
-            Util.LevelStart += OnLevelStart;
+            Util.SceneLoaded += OnSceneLoaded;
         }
 
-        private static void OnLevelStart(bool newScene)
+        private void OnDestroy()
         {
-            if (newScene)
-                States.Clear();
+            Util.SceneLoaded -= OnSceneLoaded;
+        }
+
+        private static void OnSceneLoaded()
+        {
+            States.Clear();
         }
 
         private void Update()

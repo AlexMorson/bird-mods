@@ -71,9 +71,9 @@ namespace TasBird
         private void Awake()
         {
             if (SceneManager.GetActiveScene() != LevelManager.ManagementScene)
-                OnNewSceneLoaded();
+                OnSceneLoaded();
 
-            Util.LevelStart += OnLevelStart;
+            Util.SceneLoaded += OnSceneLoaded;
             Util.PlayerUpdate += OnPlayerUpdate;
 
             if (lastDash is null)
@@ -106,7 +106,7 @@ namespace TasBird
 
         private void OnDestroy()
         {
-            Util.LevelStart -= OnLevelStart;
+            Util.SceneLoaded -= OnSceneLoaded;
             Util.PlayerUpdate -= OnPlayerUpdate;
 
             if (minimalMode.Value)
@@ -124,13 +124,7 @@ namespace TasBird
             DrawOptimalAngles(drawOptimalAngles.Value);
         }
 
-        private void OnLevelStart(bool newScene)
-        {
-            if (newScene)
-                OnNewSceneLoaded();
-        }
-
-        private void OnNewSceneLoaded()
+        private void OnSceneLoaded()
         {
             if (minimalMode.Value)
                 ToggleMinimalMode(true);

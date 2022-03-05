@@ -28,17 +28,19 @@ namespace TasBird
             saveReplay = config.Bind("Replay", "SaveReplay", new KeyboardShortcut(KeyCode.S, KeyCode.LeftControl),
                 "Save a replay formed by the inputs entered up to this point");
 
-            Util.LevelStart += OnLevelStart;
+            Util.SceneLoaded += OnSceneLoaded;
 
             Harmony.PatchAll(typeof(LoadReplayBuffersPatch));
         }
 
         private void OnDestroy()
         {
+            Util.SceneLoaded -= OnSceneLoaded;
+
             Harmony.UnpatchSelf();
         }
 
-        private static void OnLevelStart(bool newScene)
+        private static void OnSceneLoaded()
         {
             levelStartState = State.Save();
         }

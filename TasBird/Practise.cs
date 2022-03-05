@@ -51,13 +51,19 @@ namespace TasBird
         private void Awake()
         {
             if (SceneManager.GetActiveScene() != LevelManager.ManagementScene)
-                OnLevelStart(true);
+                OnSceneLoaded();
 
-            Util.LevelStart += OnLevelStart;
+            Util.SceneLoaded += OnSceneLoaded;
             Util.PlayerUpdate += OnPlayerUpdate;
         }
 
-        private void OnLevelStart(bool newScene)
+        private void OnDestroy()
+        {
+            Util.SceneLoaded -= OnSceneLoaded;
+            Util.PlayerUpdate -= OnPlayerUpdate;
+        }
+
+        private void OnSceneLoaded()
         {
             checkpoints = MasterController.GetObjects().ListOutAllObjects<Checkpoint>().OrderBy(c => c.priority).ThenBy(c => c.FinalSpawnPosition.x).ToList();
             UpdateCheckpointState();
