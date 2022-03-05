@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using HarmonyLib;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -52,6 +53,7 @@ namespace TasBird
         private PlayerPipState playerPip;
         private CameraState camera;
         private InputState input;
+        private FaderState fader;
 
         public uint Frame => input.Frame;
 
@@ -67,7 +69,8 @@ namespace TasBird
                 player = new PlayerState(),
                 playerPip = new PlayerPipState(),
                 camera = new CameraState(),
-                input = new InputState()
+                input = new InputState(),
+                fader = new FaderState()
             };
         }
 
@@ -79,6 +82,7 @@ namespace TasBird
             playerPip.Load();
             camera.Load();
             input.Load();
+            fader.Load();
         }
 
         public bool IsPrefixOf(ReplayData buffers) => input.IsPrefixOf(buffers);
@@ -312,6 +316,52 @@ namespace TasBird
                 }
 
                 return true;
+            }
+        }
+
+        private class FaderState
+        {
+            private event EventHandler<EventArgs> FadeBackEvent;
+            private event EventHandler<EventArgs> FadeOutEvent;
+            private readonly bool autoFadeBack;
+            private readonly float currentFrameCount;
+            private readonly float fadeDuration;
+            private readonly float fadeOrigin;
+            private readonly float fadeTarget;
+            private readonly bool fading;
+            private readonly Color faderColor;
+            private readonly string nextLevel;
+
+            public FaderState()
+            {
+                var fader = GameObject.Find("Fader").GetComponent<FadeLoader>();
+
+                FadeBackEvent = AccessTools.FieldRefAccess<FadeLoader, EventHandler<EventArgs>>(fader, "FadeBackEvent");
+                FadeOutEvent = AccessTools.FieldRefAccess<FadeLoader, EventHandler<EventArgs>>(fader, "FadeOutEvent");
+                autoFadeBack = fader.autoFadeBack;
+                currentFrameCount = fader.currentFrameCount;
+                fadeDuration = fader.fadeDuration;
+                fadeOrigin = fader.fadeOrigin;
+                fadeTarget = fader.fadeTarget;
+                fading = fader.fading;
+                faderColor = fader.fader.color;
+                nextLevel = fader.nextLevel;
+            }
+
+            public void Load()
+            {
+                var fader = GameObject.Find("Fader").GetComponent<FadeLoader>();
+
+                AccessTools.FieldRefAccess<FadeLoader, EventHandler<EventArgs>>(fader, "FadeBackEvent") = FadeBackEvent;
+                AccessTools.FieldRefAccess<FadeLoader, EventHandler<EventArgs>>(fader, "FadeOutEvent") = FadeOutEvent;
+                fader.autoFadeBack = autoFadeBack;
+                fader.currentFrameCount = currentFrameCount;
+                fader.fadeDuration = fadeDuration;
+                fader.fadeOrigin = fadeOrigin;
+                fader.fadeTarget = fadeTarget;
+                fader.fading = fading;
+                fader.fader.color = faderColor;
+                fader.nextLevel = nextLevel;
             }
         }
 
