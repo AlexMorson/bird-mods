@@ -60,6 +60,7 @@
     <Compile Include="Data.cs" />
     <Compile Include="Invalidate.cs" />
     <Compile Include="LevelNames.cs" />
+    <Compile Include="Link\LoadReplayFromCommand.cs" />
     <Compile Include="Link\ClientHandler.cs" />
     <Compile Include="Link\Command.cs" />
     <Compile Include="Link\FrameMessage.cs" />
@@ -89,5 +90,4 @@
   <Target Name="AfterBuild">
   </Target>
   -->
-
 </Project>

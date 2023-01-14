@@ -19,6 +19,8 @@ namespace TasBird
         private static readonly Harmony Harmony = new Harmony("com.alexmorson.tasbird.replay");
 
         private static State? levelStartState;
+        private static Coord? startPosition;
+        private static ReplayData? replayBuffers;
 
         private void Awake()
         {
@@ -43,6 +45,19 @@ namespace TasBird
         private static void OnSceneLoaded()
         {
             levelStartState = State.Save();
+
+            if (startPosition.HasValue)
+            {
+                MasterController.GetPlayer().Position = startPosition.Value;
+                MasterController.GetCamera().Restart();
+            }
+            startPosition = null;
+
+            if (replayBuffers.HasValue)
+            {
+                LoadReplayBuffers(replayBuffers.Value);
+            }
+            replayBuffers = null;
         }
 
         private void Update()
@@ -51,7 +66,7 @@ namespace TasBird
             if (saveReplay.Value.IsDown()) Save();
         }
 
-        public static void Load(string levelName, string replayString, int breakpoint)
+        public static void Load(string levelName, string replayString, int breakpoint, Coord? startPosition = null)
         {
             if (SceneManager.GetActiveScene() == LevelManager.ManagementScene)
                 return;
@@ -64,13 +79,16 @@ namespace TasBird
             LevelInfoDisplay.uiDisplay.SetActive(false);
             if (PauseMenu.IsPaused) PauseMenu.instance.ToggleMenu();
 
+            var replayBuffers = default(ReplayData);
+            replayBuffers.StringToBuffer(replayString);
+
             if (levelFile == SceneManager.GetActiveScene().name && !MasterController.GetPlayer().ending)
             {
-                var replayBuffers = default(ReplayData);
-                replayBuffers.StringToBuffer(replayString);
-
                 // Try to save some fast-forwarding by starting from an existing state
+                // Ignore non-starting states if using a custom position
                 var chosenState = levelStartState;
+                if (!startPosition.HasValue)
+                {
                 foreach (var state in StateManager.States.Values)
                 {
                     if (state.Frame <= breakpoint && (!chosenState.HasValue || state.Frame > chosenState.Value.Frame) &&
@@ -79,11 +97,17 @@ namespace TasBird
                         chosenState = state;
                     }
                 }
+                }
 
                 if (chosenState.HasValue)
                 {
-                    // Load the state, overwrite the inputs and fast-forward
+                    // Load the state, overwrite the position and inputs, and fast-forward
                     chosenState.Value.Load();
+                    if (startPosition.HasValue)
+                    {
+                        MasterController.GetPlayer().Position = startPosition.Value;
+                        MasterController.GetCamera().Restart();
+                    }
                     LoadReplayBuffers(replayBuffers, chosenState.Value.Frame);
                     if (chosenState.Value.Frame == breakpoint)
                         Time.Paused = true;
@@ -95,7 +119,8 @@ namespace TasBird
             }
 
             // No candidate state exists, so just reload the scene
-            PlayerPip.Instance.QueueReplay(replayString, Application.version);
+            Replay.startPosition = startPosition;
+            Replay.replayBuffers = replayBuffers;
             Time.FastForwardUntil(breakpoint);
             SceneChanger.Instance.ChangeScene(levelFile);
         }
