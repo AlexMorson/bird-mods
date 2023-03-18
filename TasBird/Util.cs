@@ -17,7 +17,7 @@ namespace TasBird
         private void Awake()
         {
             SceneManager.sceneLoaded += OnSceneLoaded;
-            Harmony.PatchAll(typeof(PlayerUpdatePatch));
+            Harmony.PatchAll(typeof(InputUpdatePatch));
         }
 
         private void OnDestroy()
@@ -46,13 +46,12 @@ namespace TasBird
         }
     }
 
-    [HarmonyPatch(typeof(PhysicsObject), "OnFixedUpdate")]
-    internal static class PlayerUpdatePatch
+    [HarmonyPatch(typeof(InputManager), "OnFixedUpdate")]
+    internal static class InputUpdatePatch
     {
-        private static void Postfix(PhysicsObject __instance)
+        private static void Postfix(InputManager __instance)
         {
-            if (__instance is Player player)
-                Util.OnPlayerUpdate(player.framesInLevel);
+            Util.OnPlayerUpdate((int)__instance.timeCount);
         }
     }
 }

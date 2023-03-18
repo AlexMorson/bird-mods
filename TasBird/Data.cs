@@ -166,7 +166,8 @@ namespace TasBird
         private void OnGUI()
         {
             var player = MasterController.GetPlayer();
-            if (player is null) return;
+            var input = MasterController.GetInput();
+            if (player is null || input is null) return;
 
             if (drawHitbox.Value)
             {
@@ -198,7 +199,7 @@ namespace TasBird
             if (drawDebugData.Value)
             {
                 var reachableHeight = player.Position.y + Calc.PeakFromVelocity(player.Velocity.Length - 0.4);
-                var text = $@"Frame: {player.framesInLevel}
+                var text = $@"Frame: {input.timeCount}
 Time Scale: {Time.Multiplier:0.00}
 Pos: {player.Position.x:0.00}, {player.Position.y:0.00}
 Vel: {player.Velocity.x:0.00}, {player.Velocity.y:0.00}
