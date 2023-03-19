@@ -21,6 +21,7 @@ namespace TasBird
         private readonly ConfigEntry<bool> drawLastDash;
         private readonly ConfigEntry<bool> drawOptimalAngles;
         private readonly ConfigEntry<bool> drawSurfaces;
+        private readonly ConfigEntry<bool> drawTriggers;
 
         private static readonly GUIStyle BgStyle = new GUIStyle { fontSize = 20, normal = { textColor = Color.black } };
         private static readonly GUIStyle FgStyle = new GUIStyle { fontSize = 20, normal = { textColor = Color.white } };
@@ -56,6 +57,7 @@ namespace TasBird
             drawLastDash = Plugin.Instance.Config.Bind("Data", "DrawLastDash", true, "Draw the wall or ceiling that was last dashed on");
             drawOptimalAngles = Plugin.Instance.Config.Bind("Data", "DrawOptimalAngles", true, "Draw the directions to press for optimal turning speed");
             drawSurfaces = Plugin.Instance.Config.Bind("Data", "DrawSurfaces", true, "Draw the exact boundary of walls, floors and ceilings");
+            drawTriggers = Plugin.Instance.Config.Bind("Data", "DrawTriggers", true, "Draw event trigger activation zones");
             minimalMode = Plugin.Instance.Config.Bind("Data", "MinimalMode", false, "Turn off all background art and details");
 
             drawCageZones.SettingChanged += (sender, e) => ToggleCageZones(drawCageZones.Value);
@@ -191,6 +193,10 @@ namespace TasBird
             if (drawCheckpoints.Value)
                 foreach (var checkpoint in checkpoints)
                     DrawBounds(checkpoint, new Color(1, 1, 0, 0.3f));
+
+            if (drawTriggers.Value)
+                foreach (var trigger in MasterController.GetObjects().GetObjects<GenericEventTrigger>())
+                    DrawBounds(trigger.GridHitbox, new Color(1, 0, 1, 0.5f));
 
             if (drawEndPoints.Value)
                 foreach (var endPoint in endPoints)
