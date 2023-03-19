@@ -9,6 +9,18 @@ using UnityEngine.SceneManagement;
 
 namespace TasBird
 {
+    class QueuedReplay
+    {
+        public ReplayData replayData;
+        public Coord? startPosition;
+
+        public QueuedReplay(ReplayData replayData, Coord? startPosition = null)
+        {
+            this.replayData = replayData;
+            this.startPosition = startPosition;
+        }
+    }
+
     public class Replay : MonoBehaviour
     {
         public static event UnityAction<string, string, int> SaveReplay;
@@ -19,8 +31,7 @@ namespace TasBird
         private static readonly Harmony Harmony = new Harmony("com.alexmorson.tasbird.replay");
 
         private static State? levelStartState;
-        private static Coord? startPosition;
-        private static ReplayData? replayBuffers;
+        private static Queue<QueuedReplay> queuedReplays = new Queue<QueuedReplay>();
 
         private void Awake()
         {
@@ -46,19 +57,19 @@ namespace TasBird
         {
             levelStartState = State.Save();
 
-            if (startPosition.HasValue)
+            if (queuedReplays.Count == 0)
+                return;
+
+            var replay = queuedReplays.Dequeue();
+
+            if (replay.startPosition.HasValue)
             {
-                MasterController.GetPlayer().Position = startPosition.Value;
+                MasterController.GetPlayer().Position = replay.startPosition.Value;
                 MasterController.GetCamera().Restart();
             }
-            startPosition = null;
 
-            if (replayBuffers.HasValue)
-            {
-                LoadReplayBuffers(replayBuffers.Value);
+            LoadReplayBuffers(replay.replayData);
             }
-            replayBuffers = null;
-        }
 
         private void Update()
         {
@@ -79,8 +90,8 @@ namespace TasBird
             LevelInfoDisplay.uiDisplay.SetActive(false);
             if (PauseMenu.IsPaused) PauseMenu.instance.ToggleMenu();
 
-            var replayBuffers = default(ReplayData);
-            replayBuffers.StringToBuffer(replayString);
+            var replayData = default(ReplayData);
+            replayData.StringToBuffer(replayString);
 
             if (levelFile == SceneManager.GetActiveScene().name && !MasterController.GetPlayer().ending)
             {
@@ -92,7 +103,7 @@ namespace TasBird
                 foreach (var state in StateManager.States.Values)
                 {
                     if (state.Frame <= breakpoint && (!chosenState.HasValue || state.Frame > chosenState.Value.Frame) &&
-                        state.IsPrefixOf(replayBuffers))
+                            state.IsPrefixOf(replayData))
                     {
                         chosenState = state;
                     }
@@ -113,7 +124,7 @@ namespace TasBird
                         MasterController.GetPlayer().Position = startPosition.Value;
                         MasterController.GetCamera().Restart();
                     }
-                    LoadReplayBuffers(replayBuffers, chosenState.Value.Frame);
+                    LoadReplayBuffers(replayData, chosenState.Value.Frame);
                     if (chosenState.Value.Frame == breakpoint)
                         Time.Paused = true;
                     else
@@ -123,9 +134,11 @@ namespace TasBird
                 }
             }
 
+            // We do not want to load any existing queued replays
+            queuedReplays.Clear();
+
             // No candidate state exists, so just reload the scene
-            Replay.startPosition = startPosition;
-            Replay.replayBuffers = replayBuffers;
+            queuedReplays.Enqueue(new QueuedReplay(replayData, startPosition));
             Time.FastForwardUntil(breakpoint);
             SceneChanger.Instance.ChangeScene(levelFile);
         }
@@ -164,6 +177,13 @@ namespace TasBird
                 buttonReplay.Update(breakpoint);
                 input.buttons[input.ToKey(key)] = buttonReplay;
             }
+        }
+
+        public static void Queue(string replayString)
+        {
+            var replayData = default(ReplayData);
+            replayData.StringToBuffer(replayString);
+            queuedReplays.Enqueue(new QueuedReplay(replayData));
         }
 
         public static void TakeOver()

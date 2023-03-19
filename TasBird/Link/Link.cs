@@ -25,6 +25,7 @@ namespace TasBird.Link
             TeleportCommand.Register();
             LoadReplayCommand.Register();
             LoadReplayFromCommand.Register();
+            QueueReplayCommand.Register();
             TogglePauseCommand.Register();
             StepFrameCommand.Register();
 
@@ -38,6 +39,7 @@ namespace TasBird.Link
             TeleportCommand.Unregister();
             LoadReplayCommand.Unregister();
             LoadReplayFromCommand.Unregister();
+            QueueReplayCommand.Unregister();
             TogglePauseCommand.Unregister();
             StepFrameCommand.Unregister();
 
