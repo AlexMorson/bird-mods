@@ -156,10 +156,11 @@ namespace TasBird
                 foreach (var time in buffers.axisBuffers[axis].Keys)
                 {
                     var state = (InputManager.AxisChannel.State)buffers.axisBuffers[axis][time];
-                    axisBuffer.Add(new RootInputManager.Entry<InputManager.AxisChannel.State>(state, time + 1));
+                    axisBuffer.Add(new RootInputManager.Entry<InputManager.AxisChannel.State>(state, time));
                 }
 
                 var axisReplay = new InputManager.AxisReplay(axisBuffer);
+                axisReplay.buffer.Clear(); // Remove default (0, Release) entry
                 axisReplay.Update(breakpoint);
                 input.axes[input.ToAxis(axis)] = axisReplay;
             }
@@ -170,10 +171,11 @@ namespace TasBird
                 foreach (var time in buffers.buttonBuffers[key].Keys)
                 {
                     var state = (InputManager.ButtonChannel.State)buffers.buttonBuffers[key][time];
-                    buttonBuffer.Add(new RootInputManager.Entry<InputManager.ButtonChannel.State>(state, time + 1));
+                    buttonBuffer.Add(new RootInputManager.Entry<InputManager.ButtonChannel.State>(state, time));
                 }
 
                 var buttonReplay = new InputManager.ButtonReplay(buttonBuffer);
+                buttonReplay.buffer.Clear(); // Remove default (0, Release) entry
                 buttonReplay.Update(breakpoint);
                 input.buttons[input.ToKey(key)] = buttonReplay;
             }
