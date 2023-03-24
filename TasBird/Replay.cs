@@ -68,6 +68,9 @@ namespace TasBird
                 MasterController.GetCamera().Restart();
             }
 
+            // Ensure that the replay is played back with the current game version's physics
+            PlayerPip.instance.replayVersion = Application.version;
+
             LoadReplayBuffers(replay.replayData);
             }
 
