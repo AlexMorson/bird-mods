@@ -18,6 +18,7 @@ namespace TasBird
         {
             SceneManager.sceneLoaded += OnSceneLoaded;
             Harmony.PatchAll(typeof(InputUpdatePatch));
+            Harmony.PatchAll(typeof(PlayerStartPatch));
         }
 
         private void OnDestroy()
@@ -52,6 +53,18 @@ namespace TasBird
         private static void Postfix(InputManager __instance)
         {
             Util.OnPlayerUpdate((int)__instance.timeCount);
+        }
+    }
+
+
+    [HarmonyPatch(typeof(PhysicsObject), "Start")]
+    internal static class PlayerStartPatch
+    {
+        private static void Postfix(PhysicsObject __instance)
+        {
+            // Force the InputManager to be created to avoid non-determinism
+            if (__instance is Player player)
+                MasterController.GetInput();
         }
     }
 }
