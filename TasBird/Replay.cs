@@ -30,7 +30,6 @@ namespace TasBird
 
         private static readonly Harmony Harmony = new Harmony("com.alexmorson.tasbird.replay");
 
-        private static State? levelStartState;
         private static Queue<QueuedReplay> queuedReplays = new Queue<QueuedReplay>();
 
         private void Awake()
@@ -55,8 +54,6 @@ namespace TasBird
 
         private static void OnSceneLoaded()
         {
-            levelStartState = State.Save();
-
             if (queuedReplays.Count == 0)
                 return;
 
@@ -96,21 +93,17 @@ namespace TasBird
             var replayData = default(ReplayData);
             replayData.StringToBuffer(replayString);
 
-            if (levelFile == SceneManager.GetActiveScene().name && !MasterController.GetPlayer().ending)
+            // Try to save some fast-forwarding by starting from an existing state
+            if (levelFile == SceneManager.GetActiveScene().name && !MasterController.GetPlayer().ending && !startPosition.HasValue)
             {
-                // Try to save some fast-forwarding by starting from an existing state
-                // Ignore non-starting states if using a custom position
-                var chosenState = levelStartState;
-                if (!startPosition.HasValue)
-                {
+                State? chosenState = null;
                 foreach (var state in StateManager.States.Values)
                 {
                     if (state.Frame <= breakpoint && (!chosenState.HasValue || state.Frame > chosenState.Value.Frame) &&
-                            state.IsPrefixOf(replayData))
+                        state.IsPrefixOf(replayData))
                     {
                         chosenState = state;
                     }
-                }
                 }
 
                 if (chosenState.HasValue)
