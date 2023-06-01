@@ -58,6 +58,7 @@ namespace TasBird
         private CameraState camera;
         private InputState input;
         private FaderState fader;
+        private BossState? boss;
 
         public uint Frame => input.Frame;
 
@@ -74,7 +75,8 @@ namespace TasBird
                 playerPip = new PlayerPipState(),
                 camera = new CameraState(),
                 input = new InputState(),
-                fader = new FaderState()
+                fader = new FaderState(),
+                boss = BossState.Save()
             };
         }
 
@@ -87,6 +89,16 @@ namespace TasBird
             camera.Load();
             input.Load();
             fader.Load();
+            boss?.Load();
+
+            // NOTE: Hacks to facilitate boss TASing.
+            if (boss != null)
+            {
+                // Normally the opening cutscene handles unlocking the player,
+                // but if you save a state before the cutscene ends, then the
+                // player will never get unlocked.
+                MasterController.input.locked = false;
+            }
         }
 
         public bool IsPrefixOf(ReplayData buffers) => input.IsPrefixOf(buffers);
@@ -369,6 +381,115 @@ namespace TasBird
             }
         }
 
+        private struct BossState
+        {
+            private readonly Vector contact;
+            private readonly Coord gravity;
+            private readonly IShape hitbox;
+            private readonly List<Vector> multiContact;
+            private readonly Coord position;
+            private readonly Coord prevPosition;
+            private readonly Coord velocity;
+
+            private readonly BossfightController.Timers timers;
+            private readonly int health;
+            private readonly int phase;
+            private readonly int flyTo;
+            private readonly FlyPoint flyTarget;
+            private readonly float flyTime;
+            private readonly SlamPoint targetSlam;
+            private readonly bool flyingToSlam;
+            private readonly SlamPoint trySlam;
+
+            private readonly Dictionary<string, FightReceptacleState> fightReceptacles;
+
+            public static BossState? Save()
+            {
+                var boss = MasterController.player.refs.boss;
+                if (boss is null)
+                    return null;
+                return new BossState(boss);
+            }
+
+            private BossState(BossfightController boss)
+            {
+                contact = boss.contact;
+                gravity = boss.gravity;
+                hitbox = Clone(boss.hitbox);
+                multiContact = Clone(boss.multiContact);
+                position = boss.position;
+                prevPosition = boss.prevPosition;
+                velocity = boss.velocity;
+
+                timers = Clone(boss.timers);
+                health = boss.health;
+                phase = boss.phase;
+                flyTo = boss.flyTo;
+                flyTarget = boss.flyTarget;
+                flyTime = boss.flyTime;
+                targetSlam = boss.targetSlam;
+                flyingToSlam = boss.flyingToSlam;
+                trySlam = boss.trySlam;
+
+                // Save fight receptacles
+                fightReceptacles = new Dictionary<string, FightReceptacleState>();
+                foreach (var receptacle in MasterController.GetObjects().GetObjects<FightReceptacle>())
+                    fightReceptacles[receptacle.gameObject.name] = new FightReceptacleState(receptacle);
+            }
+
+            public void Load()
+            {
+                var boss = MasterController.player.refs.boss;
+                if (boss is null)
+                    return;
+
+                // Delete any existing projectiles
+                boss.ResetRotation(false, true, false, false);
+
+                boss.contact = contact;
+                boss.gravity = gravity;
+                boss.hitbox = Clone(hitbox);
+                boss.multiContact = Clone(multiContact);
+                boss.position = position;
+                boss.prevPosition = prevPosition;
+                boss.velocity = velocity;
+
+                boss.timers = Clone(timers);
+                boss.health = health;
+                boss.phase = phase;
+                boss.flyTo = flyTo;
+                boss.flyTarget = flyTarget;
+                boss.flyTime = flyTime;
+                boss.targetSlam = targetSlam;
+                boss.flyingToSlam = flyingToSlam;
+                boss.trySlam = trySlam;
+
+                // Reset fight receptacles
+                foreach (var receptacle in MasterController.GetObjects().GetObjects<FightReceptacle>())
+                    fightReceptacles[receptacle.gameObject.name].Load(receptacle);
+            }
+            private struct FightReceptacleState
+            {
+                private readonly int count;
+                private readonly bool available;
+                private readonly int timer;
+                public FightReceptacleState(FightReceptacle receptacle)
+                {
+                    count = receptacle.Count;
+                    available = receptacle._available;
+                    timer = receptacle.timer;
+                }
+
+                public void Load(FightReceptacle receptacle)
+                {
+                    receptacle.Count = count;
+                    receptacle._available = available;
+                    receptacle.timer = timer;
+                }
+            }
+        }
+
+
         private static List<Vector> Clone(List<Vector> other)
         {
             return new List<Vector>(other);
@@ -534,6 +655,24 @@ namespace TasBird
         {
             // `Entry`s are readonly
             return new List<RootInputManager.Entry<InputManager.ButtonChannel.State>>(other);
+        }
+
+        private static BossfightController.Timers Clone(BossfightController.Timers other)
+        {
+            var timers = new BossfightController.Timers();
+            other.ForEach(timer => timers.Add(Clone(timer)));
+            return timers;
+        }
+
+        private static BossfightController.Timer Clone(BossfightController.Timer other)
+        {
+            return new BossfightController.Timer
+            {
+
+                time = other.time,
+                action = other.action,
+                done = other.done,
+            };
         }
     }
 }
