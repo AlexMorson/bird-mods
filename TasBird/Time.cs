@@ -11,6 +11,7 @@ namespace TasBird
         private static ConfigEntry<KeyboardShortcut> stepFrame;
         private static ConfigEntry<KeyboardShortcut> speedUp;
         private static ConfigEntry<KeyboardShortcut> slowDown;
+        private static ConfigEntry<bool> shouldFastForward;
 
         private static readonly Harmony Harmony = new Harmony("com.alexmorson.tasbird.time");
 
@@ -51,6 +52,8 @@ namespace TasBird
                 "Speed the game up");
             slowDown = config.Bind("Time", "SlowDown", new KeyboardShortcut(KeyCode.Minus),
                 "Slow the game down");
+            shouldFastForward = config.Bind("Time", "ShouldFastForward", true,
+                "Should the game be sped up when watching a replay to a breakpoint?");
         }
 
         private void Awake()
@@ -101,7 +104,8 @@ namespace TasBird
             {
                 if (frame < fastForwardUntil)
                 {
-                    UnityTime.timeScale = Calc.Clamp(Mathf.Floor(fastForwardUntil - frame - lastTimeScale), 0.8f, 100f);
+                    var maxTimeScale = shouldFastForward.Value ? 100f : 0.8f;
+                    UnityTime.timeScale = Calc.Clamp(Mathf.Floor(fastForwardUntil - frame - lastTimeScale), 0.8f, maxTimeScale);
                 }
                 else
                 {
