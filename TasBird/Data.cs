@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using BepInEx.Configuration;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -9,6 +10,7 @@ namespace TasBird
     public class Data : MonoBehaviour
     {
         private readonly ConfigEntry<bool> minimalMode;
+        private readonly ConfigEntry<bool> drawBossData;
         private readonly ConfigEntry<bool> drawCageZones;
         private readonly ConfigEntry<bool> drawCamera;
         private readonly ConfigEntry<bool> drawCheckpoints;
@@ -34,17 +36,21 @@ namespace TasBird
         private LineRenderer cloakPower, cloakTimer;
         private LineRenderer cloakPowerBack, cloakTimerBack;
         private LineRenderer leftZone, rightZone;
+        private LineRenderer bossFlyTarget;
         private readonly List<CameraZone> cameraZones = new List<CameraZone>();
         private readonly List<LineRenderer> cageZones = new List<LineRenderer>();
         private readonly List<LineRenderer> cameraLinks = new List<LineRenderer>();
         private readonly List<LineRenderer> collectables = new List<LineRenderer>();
+        private readonly List<LineRenderer> flyPoints = new List<LineRenderer>();
         private readonly List<LineRenderer> surfaces = new List<LineRenderer>();
         private readonly List<Rectangle> deathZones = new List<Rectangle>();
         private readonly List<Rectangle> checkpoints = new List<Rectangle>();
         private readonly List<Rectangle> endPoints = new List<Rectangle>();
+        private readonly List<LineRenderer> bossStuff = new List<LineRenderer>();
 
         private Data()
         {
+            drawBossData = Plugin.Instance.Config.Bind("Data", "DrawBossData", false, "Draw information about what the boss is thinking");
             drawCageZones = Plugin.Instance.Config.Bind("Data", "DrawCageZones", true, "Draw the activation circles at the start and end of caged levels");
             drawCamera = Plugin.Instance.Config.Bind("Data", "DrawCamera", false, "Draw the camera zones with offsets, and links between them");
             drawCheckpoints = Plugin.Instance.Config.Bind("Data", "DrawCheckpoints", true, "Draw the checkpoint activation zones");
@@ -104,6 +110,9 @@ namespace TasBird
 
             if (rightZone is null)
                 rightZone = CreateLineRenderer(Color.red, 2, 2);
+
+            if (bossFlyTarget is null)
+                bossFlyTarget = CreateLineRenderer(Color.yellow, 2, 2);
         }
 
         private void OnDestroy()
@@ -117,6 +126,7 @@ namespace TasBird
             ToggleCageZones(false);
             ToggleCamera(false);
             ToggleCollectables(false);
+            ToggleFlyPoints(false);
         }
 
         private void OnPlayerUpdate(int frame)
@@ -124,6 +134,7 @@ namespace TasBird
             DrawCloakData(drawCloakData.Value);
             DrawLastDash(drawLastDash.Value);
             DrawOptimalAngles(drawOptimalAngles.Value);
+            DrawBossData(drawBossData.Value);
         }
 
         private void OnSceneLoaded()
@@ -163,6 +174,7 @@ namespace TasBird
             ToggleCageZones(drawCageZones.Value);
             ToggleCamera(drawCamera.Value);
             ToggleCollectables(drawCollectables.Value);
+            ToggleFlyPoints(drawBossData.Value);
         }
 
         private void OnGUI()
@@ -221,6 +233,25 @@ Reachable Height: {reachableHeight:0.00}";
 
                 DrawText(text, 10, 10);
                 DrawText(timersText, 10, 220);
+            }
+
+            if (drawBossData.Value)
+            {
+                var boss = MasterController.GetPlayer().refs.boss;
+                if (boss != null)
+                {
+                    var i = 1;
+                    foreach (var target in (from x in boss.flyPoints
+                        orderby (x.transform.position - player.Position).LengthSqr
+                        select x).Take(7))
+                    {
+                        var targetPos = target.transform.position;
+                        var screenPos = Camera.WorldToScreen(targetPos);
+                        DrawText(i.ToString(), screenPos.x - 5, Screen.height - screenPos.y - 10);
+                        ++i;
+                    }
+                    DrawText($"Rotation: {boss.rotation?.ToString() ?? "null"}", 10, 420);
+                }
             }
         }
 
@@ -286,6 +317,46 @@ Reachable Height: {reachableHeight:0.00}";
             rightZone.SetPosition(0, new Vector3(right, bottom));
             rightZone.SetPosition(1, new Vector3(right, top));
 
+        }
+
+        private void DrawBossData(bool on)
+        {
+            bossFlyTarget.positionCount = 0;
+            foreach (var renderer in bossStuff)
+                if (renderer != null)
+                    Destroy(renderer.gameObject);
+            bossStuff.Clear();
+
+            if (!on) return;
+
+            var boss = MasterController.GetPlayer().refs.boss;
+            if (!boss) return;
+            if (boss.flyTarget is null) return;
+
+            bossFlyTarget.positionCount = 2;
+            bossFlyTarget.SetPosition(0, boss.Position.V3);
+            bossFlyTarget.SetPosition(1, boss.flyTarget.transform.position);
+
+            foreach (var r in MasterController.GetObjects().GetObjects<FightReceptacle>())
+            {
+                var l = CreateLineRenderer(Color.white, 2, 2);
+                CreateCircleRenderer(l, (float)r.Position.x, (float)r.Position.y, r.Radius, 30);
+                bossStuff.Add(l);
+            }
+
+            foreach (var orb in MasterController.GetObjects().GetObjects<LobOrb>())
+            {
+                var c = orb.velocity.Length > 14 && orb.playerOwned ? Color.red : Color.white;
+                var l = CreateLineRenderer(c, 2, 2);
+                CreateCircleRenderer(l, (float)orb.position.x, (float)orb.position.y, 64, 30);
+                bossStuff.Add(l);
+            }
+
+            {
+                var l = CreateLineRenderer(Color.white, 2, 2);
+                CreateCircleRenderer(l, (float)boss.position.x, (float)boss.position.y, 64, 30);
+                bossStuff.Add(l);
+            }
         }
 
         private static void ToggleMinimalMode(bool on)
@@ -438,6 +509,29 @@ Reachable Height: {reachableHeight:0.00}";
                 position = end.transform.position;
                 CreateCircleRenderer(lineRenderer, position.x, position.y, end.radius, 30);
                 cageZones.Add(lineRenderer);
+            }
+        }
+
+        private void ToggleFlyPoints(bool on)
+        {
+            // Destroy old renderers
+            foreach (var renderer in flyPoints)
+            {
+                if (renderer is null) continue;
+                Destroy(renderer.gameObject);
+            }
+
+            flyPoints.Clear();
+
+            // Create new renderers
+            if (!on) return;
+
+            foreach (var flyPoint in MasterController.GetObjects().GetObjects<FlyPoint>())
+            {
+                var lineRenderer = CreateLineRenderer(Color.white, 2, 0);
+                var position = flyPoint.transform.position;
+                CreateCircleRenderer(lineRenderer, position.x, position.y, 32, 30);
+                flyPoints.Add(lineRenderer);
             }
         }
 

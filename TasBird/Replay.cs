@@ -69,7 +69,7 @@ namespace TasBird
             PlayerPip.instance.replayVersion = Application.version;
 
             LoadReplayBuffers(replay.replayData);
-            }
+        }
 
         private void Update()
         {

@@ -13,13 +13,23 @@ namespace TasBird
         public static float HalfHeight { get; private set; }
         public static float HalfWidth => HalfHeight / Screen.height * Screen.width;
         public static float Zoom => Screen.height / 2f / HalfHeight;
-        public static Vector3 MouseWorld => Position - new Vector3(HalfWidth, HalfHeight) + Input.mousePosition / Zoom;
+        public static Vector3 MouseWorld => ScreenToWorld(Input.mousePosition);
 
         private readonly ConfigEntry<KeyboardShortcut> resetCamera;
 
         private static Vector3 prevMousePos;
 
         private static readonly Harmony Harmony = new Harmony("com.alexmorson.tasbird.camera");
+
+        public static Vector3 ScreenToWorld(Vector3 pos)
+        {
+            return pos / Zoom + Position - new Vector3(HalfWidth, HalfHeight);
+        }
+
+        public static Vector3 WorldToScreen(Vector3 pos)
+        {
+            return (pos - (Position - new Vector3(HalfWidth, HalfHeight))) * Zoom;
+        }
 
         private Camera()
         {
