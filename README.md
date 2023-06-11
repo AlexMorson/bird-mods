@@ -2,6 +2,11 @@
 
 ## Features
 
+### Bugfixes
+
+- Fix the camera sometimes jumping wildly.
+- Fix the quality settings not being saved.
+
 ### TasBird
 
 - Move and zoom the camera with the mouse.
@@ -13,10 +18,10 @@
 
 ## Installation
 
-1. Download BepInEx\_x86 from the [BepInEx releases page](https://github.com/BepInEx/BepInEx/releases).
-2. Extract it into the game folder so that `BepInEx/` is beside `TheKingsBird_Data/`.
-3. Run the game once to let BepInEx set itself up.
-4. Download `TasBird.dll` from the releases page and put it in `BepInEx/plugins/`.
+1. Download BepInEx\_x86 from the [BepInEx releases page](https://github.com/BepInEx/BepInEx/releases). (Note: `x86`, not `x64`!)
+2. Extract the zip into the game folder so that `BepInEx/`, `doorstop_config.ini` and `winhttp.dll` are in the same place as `TheKingsBird.exe`.
+3. Run the game once to let BepInEx set itself up. This will create `BepInEx/LogOutput.txt` if successful.
+4. Download the desired mod's `dll` from the [releases page](https://github.com/AlexMorson/bird-mods/releases) and put it in `BepInEx/plugins/`.
 5. (optional) Install the [ConfigurationManager](https://github.com/BepInEx/BepInEx.ConfigurationManager/releases) plugin to get a config menu bound to F1.
 
 ## Development
