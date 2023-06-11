@@ -9,10 +9,11 @@
 - Shows debug data including position, velocity and internal timers.
 - Draws deathzones, entity hitboxes and exact wall boundaries.
 - TCP Server to communicate with external tools.
+- Input display.
 
 ## Installation
 
-1. Download BepInEx_x86 from the [BepInEx releases page](https://github.com/BepInEx/BepInEx/releases).
+1. Download BepInEx\_x86 from the [BepInEx releases page](https://github.com/BepInEx/BepInEx/releases).
 2. Extract it into the game folder so that `BepInEx/` is beside `TheKingsBird_Data/`.
 3. Run the game once to let BepInEx set itself up.
 4. Download `TasBird.dll` from the releases page and put it in `BepInEx/plugins/`.
@@ -21,7 +22,8 @@
 ## Development
 
 1. Install BepInEx as described above.
-2. Copy `BepInEx/core/*.dll` and `TheKingsBird_Data/Managed/*.dll` into `Lib/`.
-3. Download [NStrip](https://github.com/BepInEx/NStrip/releases) and run `NStrip.exe -n -o -p Lib/Assembly-CSharp.dll` to make all types, methods, properties and fields public.
-4. Set `Logging.Console.Enabled = true` in `BenInEx/config/BenInEx.cfg` to help with debugging.
-5. Install the [ScriptEngine](https://github.com/BepInEx/BepInEx.Debug/releases) plugin to hot-load mods placed in `BepInEx/scripts/` by pressing F6. This avoids having to restart the game to test changes.
+2. Clone the `bird-mods` repository.
+3. Copy `BepInEx/core/*.dll` and `TheKingsBird_Data/Managed/*.dll` into `bird-mods/Lib/`.
+4. Download [NStrip](https://github.com/BepInEx/NStrip/releases) and run `NStrip.exe -n -o -p Lib/Assembly-CSharp.dll` to make all types, methods, properties and fields public.
+5. Set `Logging.Console.Enabled = true` in `BenInEx/config/BenInEx.cfg` to help with debugging.
+6. Install the [ScriptEngine](https://github.com/BepInEx/BepInEx.Debug/releases) plugin to hot-load mods placed in `BepInEx/scripts/` by pressing F6. This avoids having to restart the game to test changes.

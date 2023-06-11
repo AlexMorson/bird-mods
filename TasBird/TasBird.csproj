@@ -58,6 +58,7 @@
   <ItemGroup>
     <Compile Include="Camera.cs" />
     <Compile Include="Data.cs" />
+    <Compile Include="InputDisplay.cs" />
     <Compile Include="Invalidate.cs" />
     <Compile Include="LevelNames.cs" />
     <Compile Include="Link\QueueReplayCommand.cs" />
@@ -82,6 +83,16 @@
     <Compile Include="StateManager.cs" />
     <Compile Include="Time.cs" />
     <Compile Include="Util.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\background.png" />
+    <EmbeddedResource Include="Assets\dash.png" />
+    <EmbeddedResource Include="Assets\down.png" />
+    <EmbeddedResource Include="Assets\glide.png" />
+    <EmbeddedResource Include="Assets\jump.png" />
+    <EmbeddedResource Include="Assets\left.png" />
+    <EmbeddedResource Include="Assets\right.png" />
+    <EmbeddedResource Include="Assets\up.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
