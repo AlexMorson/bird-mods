@@ -63,17 +63,20 @@ namespace TasBird
             Cursor.visible = true;
 
             var mousePos = Input.mousePosition;
-            if (Input.GetMouseButton(0) && prevMousePos != mousePos)
+            var leftHeld = Input.GetMouseButton(0);
+            var inWindow = 0 <= mousePos.x && mousePos.x < Screen.width && 0 <= mousePos.y && mousePos.y < Screen.height;
+            var scrollDelta = Input.mouseScrollDelta.y;
+
+            if (leftHeld && prevMousePos != mousePos)
             {
                 if (!IsFixed) IsFixed = true;
                 Position -= (mousePos - prevMousePos) * HalfHeight / (Screen.height / 2f);
             }
 
-            var scroll = Input.mouseScrollDelta.y;
-            if (scroll != 0)
+            if (scrollDelta != 0 && (leftHeld || inWindow))
             {
                 if (!IsFixed) IsFixed = true;
-                HalfHeight *= Mathf.Pow(2, -scroll / 2);
+                HalfHeight *= Mathf.Pow(2, -scrollDelta / 2);
                 FOV = 2 * Mathf.Atan(HalfHeight / -Position.z) * 180 / Mathf.PI;
             }
 
