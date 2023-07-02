@@ -30,5 +30,5 @@
 2. Clone the `bird-mods` repository.
 3. Copy `BepInEx/core/*.dll` and `TheKingsBird_Data/Managed/*.dll` into `bird-mods/Lib/`.
 4. Download [NStrip](https://github.com/BepInEx/NStrip/releases) and run `NStrip.exe -n -o -p Lib/Assembly-CSharp.dll` to make all types, methods, properties and fields public.
-5. Set `Logging.Console.Enabled = true` in `BenInEx/config/BenInEx.cfg` to help with debugging.
+5. Set `Logging.Console.Enabled = true` in `BepInEx/config/BepInEx.cfg` to help with debugging.
 6. Install the [ScriptEngine](https://github.com/BepInEx/BepInEx.Debug/releases) plugin to hot-load mods placed in `BepInEx/scripts/` by pressing F6. This avoids having to restart the game to test changes.
