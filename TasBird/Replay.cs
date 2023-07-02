@@ -108,10 +108,6 @@ namespace TasBird
                     // Load the state, overwrite the position and inputs, and fast-forward
                     chosenState.Value.Load();
 
-                    // Hack to match behaviour when loading from another scene
-                    // because an extra FixedUpdate call is being made somewhere.
-                    PlayerPip.Instance.countdown += 1;
-
                     if (startPosition.HasValue)
                     {
                         MasterController.GetPlayer().Position = startPosition.Value;
