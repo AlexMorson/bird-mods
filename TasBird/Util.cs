@@ -11,7 +11,7 @@ namespace TasBird
         private static ConfigEntry<bool> autoExitLevels;
 
         public static event UnityAction SceneLoaded;
-        public static event UnityAction<int> PlayerUpdate;
+        public static event UnityAction FrameEnd;
 
         private static readonly Harmony Harmony = new Harmony("com.alexmorson.tasbird.util");
 
@@ -28,7 +28,7 @@ namespace TasBird
         private void Awake()
         {
             SceneManager.sceneLoaded += OnSceneLoaded;
-            Harmony.PatchAll(typeof(InputFixedUpdatePatch));
+            Harmony.PatchAll(typeof(CameraControllerOnFixedUpdatePatch));
             Harmony.PatchAll(typeof(PlayerStartPatch));
             Harmony.PatchAll(typeof(EndPointPatch));
         }
@@ -53,18 +53,23 @@ namespace TasBird
             SceneLoaded?.Invoke();
         }
 
-        public static void OnPlayerUpdate(int frame)
+        public static void OnFrameEnd()
         {
-            PlayerUpdate?.Invoke(frame);
+            FrameEnd?.Invoke();
         }
     }
 
-    [HarmonyPatch(typeof(InputManager), "OnFixedUpdate")]
-    internal static class InputFixedUpdatePatch
+    [HarmonyPatch(typeof(CameraController), "OnFixedUpdate")]
+    internal static class CameraControllerOnFixedUpdatePatch
     {
-        private static void Postfix(InputManager __instance)
+        private static void Postfix()
         {
-            Util.OnPlayerUpdate((int)__instance.timeCount);
+            // The only objects that are after the CameraController in the script
+            // execution order are the ParallaxMover and FlowShaderProcessor, so
+            // this is a good time to do things at the "end" of the frame.
+            // I chose the CameraController because it exists in every scene
+            // exactly once.
+            Util.OnFrameEnd();
         }
     }
 

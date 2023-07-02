@@ -22,7 +22,9 @@ namespace TasBird
 
         private static bool willFastForward;
         private static bool fastForwarding;
-        private static int fastForwardUntil;
+        private static uint fastForwardUntil;
+
+        public static uint Frame { get; set; }
 
         public static float Multiplier
         {
@@ -59,7 +61,7 @@ namespace TasBird
         private void Awake()
         {
             Util.SceneLoaded += OnSceneLoaded;
-            Util.PlayerUpdate += OnPlayerUpdate;
+            Util.FrameEnd += OnFrameEnd;
             Harmony.PatchAll(typeof(ValidateSettingsPatch));
             Harmony.PatchAll(typeof(TogglePlayerLockPatch));
         }
@@ -70,7 +72,7 @@ namespace TasBird
             ToggleFlowEffects(true);
 
             Util.SceneLoaded -= OnSceneLoaded;
-            Util.PlayerUpdate -= OnPlayerUpdate;
+            Util.FrameEnd -= OnFrameEnd;
             Harmony.UnpatchSelf();
         }
 
@@ -84,6 +86,8 @@ namespace TasBird
 
         private static void OnSceneLoaded()
         {
+            Frame = 0;
+
             if (willFastForward)
             {
                 willFastForward = false;
@@ -91,8 +95,10 @@ namespace TasBird
             }
         }
 
-        private static void OnPlayerUpdate(int frame)
+        private static void OnFrameEnd()
         {
+            ++Frame;
+
             if (stepping)
             {
                 stepping = false;
@@ -102,10 +108,10 @@ namespace TasBird
 
             if (fastForwarding)
             {
-                if (frame < fastForwardUntil)
+                if (Frame < fastForwardUntil)
                 {
                     var maxTimeScale = shouldFastForward.Value ? 100f : 0.8f;
-                    UnityTime.timeScale = Calc.Clamp(Mathf.Floor(fastForwardUntil - frame - lastTimeScale), 0.8f, maxTimeScale);
+                    UnityTime.timeScale = Calc.Clamp(Mathf.Floor(fastForwardUntil - Frame - lastTimeScale), 0.8f, maxTimeScale);
                 }
                 else
                 {
@@ -145,7 +151,7 @@ namespace TasBird
             else
                 willFastForward = true;
 
-            fastForwardUntil = frame;
+            fastForwardUntil = (uint)frame;
             DisableFrameSkip();
         }
 

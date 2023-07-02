@@ -24,13 +24,13 @@ namespace TasBird.Link
             Util.WriteFloat(stream, (float)velocity.y);
         }
 
-        public static void Register() => TasBird.Util.PlayerUpdate += OnPlayerUpdate;
-        public static void Unregister() => TasBird.Util.PlayerUpdate -= OnPlayerUpdate;
+        public static void Register() => TasBird.Util.FrameEnd += OnFrameEnd;
+        public static void Unregister() => TasBird.Util.FrameEnd -= OnFrameEnd;
 
-        private static void OnPlayerUpdate(int frame)
+        private static void OnFrameEnd()
         {
             var player = MasterController.GetPlayer();
-            var message = new FrameMessage(frame, player.Position, player.Velocity);
+            var message = new FrameMessage((int)Time.Frame, player.Position, player.Velocity);
             Link.SendMessage(message);
         }
     }

@@ -82,7 +82,7 @@ namespace TasBird
                 OnSceneLoaded();
 
             Util.SceneLoaded += OnSceneLoaded;
-            Util.PlayerUpdate += OnPlayerUpdate;
+            Util.FrameEnd += OnFrameEnd;
 
             if (lastDash is null)
                 lastDash = CreateLineRenderer(Color.red, 4, 1);
@@ -118,7 +118,7 @@ namespace TasBird
         private void OnDestroy()
         {
             Util.SceneLoaded -= OnSceneLoaded;
-            Util.PlayerUpdate -= OnPlayerUpdate;
+            Util.FrameEnd -= OnFrameEnd;
 
             if (minimalMode.Value)
                 ToggleMinimalMode(false);
@@ -129,7 +129,7 @@ namespace TasBird
             ToggleFlyPoints(false);
         }
 
-        private void OnPlayerUpdate(int frame)
+        private void OnFrameEnd()
         {
             DrawCloakData(drawCloakData.Value);
             DrawLastDash(drawLastDash.Value);
@@ -217,7 +217,7 @@ namespace TasBird
             if (drawDebugData.Value)
             {
                 var reachableHeight = player.Position.y + Calc.PeakFromVelocity(player.Velocity.Length - 0.4);
-                var text = $@"Frame: {input.timeCount}
+                var text = $@"Frame: {Time.Frame}
 Time Scale: {Time.Multiplier:0.00}
 Pos: {player.Position.x:0.00}, {player.Position.y:0.00}
 Vel: {player.Velocity.x:0.00}, {player.Velocity.y:0.00}

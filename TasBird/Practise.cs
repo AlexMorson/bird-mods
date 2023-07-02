@@ -54,13 +54,13 @@ namespace TasBird
                 OnSceneLoaded();
 
             Util.SceneLoaded += OnSceneLoaded;
-            Util.PlayerUpdate += OnPlayerUpdate;
+            Util.FrameEnd += OnFrameEnd;
         }
 
         private void OnDestroy()
         {
             Util.SceneLoaded -= OnSceneLoaded;
-            Util.PlayerUpdate -= OnPlayerUpdate;
+            Util.FrameEnd -= OnFrameEnd;
         }
 
         private void OnSceneLoaded()
@@ -69,7 +69,7 @@ namespace TasBird
             UpdateCheckpointState();
         }
 
-        private void OnPlayerUpdate(int frame)
+        private void OnFrameEnd()
         {
             if (!instantRestart.Value) return;
 

@@ -51,8 +51,7 @@ namespace TasBird
 
     public struct State
     {
-        private bool paused;
-        private float multiplier;
+        private TimeState time;
         private PlayerState player;
         private PlayerPipState playerPip;
         private CameraState camera;
@@ -60,7 +59,7 @@ namespace TasBird
         private FaderState fader;
         private BossState? boss;
 
-        public uint Frame => input.Frame;
+        public uint Frame => time.Frame;
 
         public static State? Save()
         {
@@ -69,8 +68,7 @@ namespace TasBird
 
             return new State
             {
-                paused = Time.Paused,
-                multiplier = Time.Multiplier,
+                time = new TimeState(),
                 player = new PlayerState(),
                 playerPip = new PlayerPipState(),
                 camera = new CameraState(),
@@ -82,8 +80,7 @@ namespace TasBird
 
         public void Load()
         {
-            Time.Paused = paused;
-            Time.Multiplier = multiplier;
+            time.Load();
             player.Load();
             playerPip.Load();
             camera.Load();
@@ -102,6 +99,29 @@ namespace TasBird
         }
 
         public bool IsPrefixOf(ReplayData buffers) => input.IsPrefixOf(buffers);
+
+        private class TimeState
+        {
+            private readonly uint frame;
+            private readonly bool paused;
+            private readonly float multiplier;
+
+            public uint Frame => frame;
+
+            public TimeState()
+            {
+                frame = Time.Frame;
+                paused = Time.Paused;
+                multiplier = Time.Multiplier;
+            }
+
+            public void Load()
+            {
+                Time.Frame = frame;
+                Time.Paused = paused;
+                Time.Multiplier = multiplier;
+            }
+        }
 
         private class PlayerState
         {
@@ -253,8 +273,6 @@ namespace TasBird
             private readonly bool locked;
             private readonly uint timeCount;
             private readonly bool updateReady;
-
-            public uint Frame => timeCount;
 
             public InputState()
             {
