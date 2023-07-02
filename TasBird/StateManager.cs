@@ -300,52 +300,55 @@ namespace TasBird
                 input.updateReady = updateReady;
             }
 
+            /**
+             * Are the inputs used to create the save state equal to the given
+             * replay buffers up to the time at which the state was saved?
+             */
             public bool IsPrefixOf(ReplayData buffers)
             {
                 foreach (var axis in axes)
                 {
-                    var axisBuffer = axis.Value.buffer;
-                    var i = 0;
-                    foreach (var entry in buffers.axisBuffers[(int)axis.Key])
+                    var stateBuffer = axis.Value.buffer;
+                    var replayBuffer = buffers.axisBuffers[(int)axis.Key].OrderBy(entry => entry.Key).ToList();
+                    var statePointer = 0;
+                    var replayPointer = 0;
+                    while (true)
                     {
-                        if (i >= axisBuffer.Count)
-                        {
-                            if (entry.Key <= timeCount)
-                            {
-                                // Replay buffer has an input that is not present in our inputs
-                                return false;
-                            }
-                        }
-                        else if (entry.Key != axisBuffer[i].time || entry.Value != (int)axisBuffer[i].state)
-                        {
-                            // There is a mismatched entry
-                            return false;
-                        }
+                        var stateEnded = statePointer == stateBuffer.Count || stateBuffer[statePointer].time + 1 >= timeCount;
+                        var replayEnded = replayPointer == replayBuffer.Count || replayBuffer[replayPointer].Key + 1 >= timeCount;
 
-                        i += 1;
+                        if (stateEnded && replayEnded)
+                            break;
+
+                        if (stateEnded || replayEnded || stateBuffer[statePointer].time != replayBuffer[replayPointer].Key || (int)stateBuffer[statePointer].state != replayBuffer[replayPointer].Value)
+                            return false;
+
+                        // Find the next entry where the input state changes
+                        do { ++statePointer; } while (statePointer < stateBuffer.Count && stateBuffer[statePointer].state == stateBuffer[statePointer - 1].state);
+                        do { ++replayPointer; } while (replayPointer < replayBuffer.Count && replayBuffer[replayPointer].Value == replayBuffer[replayPointer - 1].Value);
                     }
                 }
 
                 foreach (var button in buttons)
                 {
-                    var buttonBuffer = button.Value.buffer;
-                    var i = 0;
-                    foreach (var entry in buffers.buttonBuffers[(int)button.Key])
+                    var stateBuffer = button.Value.buffer;
+                    var replayBuffer = buffers.buttonBuffers[(int)button.Key].OrderBy(entry => entry.Key).ToList();
+                    var statePointer = 0;
+                    var replayPointer = 0;
+                    while (true)
                     {
-                        if (i >= buttonBuffer.Count)
-                        {
-                            if (entry.Key <= timeCount)
-                            {
-                                // Replay buffer has an input that is not present in our inputs
-                                return false;
-                            }
-                        }
-                        else if (entry.Key != buttonBuffer[i].time || entry.Value != (int)buttonBuffer[i].state)
-                        {
-                            // There is a mismatched entry
+                        var stateEnded = statePointer == stateBuffer.Count || stateBuffer[statePointer].time + 1 >= timeCount;
+                        var replayEnded = replayPointer == replayBuffer.Count || replayBuffer[replayPointer].Key + 1 >= timeCount;
+
+                        if (stateEnded && replayEnded)
+                            break;
+
+                        if (stateEnded || replayEnded || stateBuffer[statePointer].time != replayBuffer[replayPointer].Key || (int)stateBuffer[statePointer].state != replayBuffer[replayPointer].Value)
                             return false;
-                        }
-                        i += 1;
+
+                        // Find the next entry where the input state changes
+                        do { ++statePointer; } while (statePointer < stateBuffer.Count && stateBuffer[statePointer].state == stateBuffer[statePointer - 1].state);
+                        do { ++replayPointer; } while (replayPointer < replayBuffer.Count && replayBuffer[replayPointer].Value == replayBuffer[replayPointer - 1].Value);
                     }
                 }
 
