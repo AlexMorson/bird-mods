@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
 using BepInEx.Configuration;
-using HarmonyLib;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
@@ -28,8 +26,6 @@ namespace TasBird
         private static ConfigEntry<KeyboardShortcut> takeOver;
         private static ConfigEntry<KeyboardShortcut> saveReplay;
 
-        private static readonly Harmony Harmony = new Harmony("com.alexmorson.tasbird.replay");
-
         private static Queue<QueuedReplay> queuedReplays = new Queue<QueuedReplay>();
 
         private void Awake()
@@ -41,15 +37,11 @@ namespace TasBird
                 "Save a replay formed by the inputs entered up to this point");
 
             Util.SceneLoaded += OnSceneLoaded;
-
-            Harmony.PatchAll(typeof(LoadReplayBuffersPatch));
         }
 
         private void OnDestroy()
         {
             Util.SceneLoaded -= OnSceneLoaded;
-
-            Harmony.UnpatchSelf();
         }
 
         private static void OnSceneLoaded()
@@ -68,7 +60,7 @@ namespace TasBird
             // Ensure that the replay is played back with the current game version's physics
             PlayerPip.instance.replayVersion = Application.version;
 
-            LoadReplayBuffers(replay.replayData);
+            MasterController.GetInput().LoadReplayBuffers(replay.replayData);
         }
 
         private void Update()
@@ -94,16 +86,21 @@ namespace TasBird
             replayData.StringToBuffer(replayString);
 
             // Try to save some fast-forwarding by starting from an existing state
-            if (levelFile == SceneManager.GetActiveScene().name && !MasterController.GetPlayer().ending && !startPosition.HasValue)
+            if (breakpoint >= 0 && levelFile == SceneManager.GetActiveScene().name && !MasterController.GetPlayer().ending && !startPosition.HasValue)
             {
                 State? chosenState = null;
                 foreach (var state in StateManager.States.Values)
                 {
-                    if (state.Frame <= breakpoint && (!chosenState.HasValue || state.Frame > chosenState.Value.Frame) &&
-                        state.IsPrefixOf(replayData))
-                    {
+                    // If this state is no better than the current best, ignore it
+                    if (chosenState.HasValue && state.Frame <= chosenState.Value.Frame)
+                        continue;
+
+                    // We cannot use a state that was saved after the breakpoint
+                    if (state.Frame > breakpoint)
+                        continue;
+
+                    if (state.IsPrefixOf(replayData))
                         chosenState = state;
-                    }
                 }
 
                 if (chosenState.HasValue)
@@ -120,7 +117,10 @@ namespace TasBird
                         MasterController.GetPlayer().Position = startPosition.Value;
                         MasterController.GetCamera().Restart();
                     }
-                    LoadReplayBuffers(replayData, chosenState.Value.Frame);
+
+                    MasterController.GetInput().LoadReplayBuffers(replayData);
+                    ReadInputsUntil(chosenState.Value.Frame);
+
                     if (chosenState.Value.Frame == breakpoint)
                         Time.Paused = true;
                     else
@@ -139,42 +139,13 @@ namespace TasBird
             SceneChanger.Instance.ChangeScene(levelFile);
         }
 
-        public static void LoadReplayBuffers(ReplayData buffers, uint breakpoint = 0)
+        public static void ReadInputsUntil(uint frame)
         {
-            Debug.Log("LoadReplayBuffers");
-
             var input = MasterController.GetInput();
-            input.isReplay = true;
-
-            foreach (var axis in buffers.axisBuffers.Keys)
-            {
-                var axisBuffer = new List<RootInputManager.Entry<InputManager.AxisChannel.State>>();
-                foreach (var time in buffers.axisBuffers[axis].Keys)
-                {
-                    var state = (InputManager.AxisChannel.State)buffers.axisBuffers[axis][time];
-                    axisBuffer.Add(new RootInputManager.Entry<InputManager.AxisChannel.State>(state, time));
-                }
-
-                var axisReplay = new InputManager.AxisReplay(axisBuffer);
-                axisReplay.buffer.Clear(); // Remove default (0, Release) entry
-                axisReplay.Update(breakpoint);
-                input.axes[input.ToAxis(axis)] = axisReplay;
-            }
-
-            foreach (var key in buffers.buttonBuffers.Keys)
-            {
-                var buttonBuffer = new List<RootInputManager.Entry<InputManager.ButtonChannel.State>>();
-                foreach (var time in buffers.buttonBuffers[key].Keys)
-                {
-                    var state = (InputManager.ButtonChannel.State)buffers.buttonBuffers[key][time];
-                    buttonBuffer.Add(new RootInputManager.Entry<InputManager.ButtonChannel.State>(state, time));
-                }
-
-                var buttonReplay = new InputManager.ButtonReplay(buttonBuffer);
-                buttonReplay.buffer.Clear(); // Remove default (0, Release) entry
-                buttonReplay.Update(breakpoint);
-                input.buttons[input.ToKey(key)] = buttonReplay;
-            }
+            foreach (var axisBuffer in input.axes.Values)
+                axisBuffer.Update(frame);
+            foreach (var buttonBuffer in input.buttons.Values)
+                buttonBuffer.Update(frame);
         }
 
         public static void Queue(string replayString)
@@ -231,22 +202,6 @@ namespace TasBird
             var frame = MasterController.GetPlayer().framesInLevel;
 
             SaveReplay?.Invoke(levelName, replayBuffer, frame);
-        }
-    }
-
-    [HarmonyPatch]
-    internal static class LoadReplayBuffersPatch
-    {
-        private static MethodBase TargetMethod()
-        {
-            return typeof(BaseInputManager<InputManager.Key, InputManager.Axis, InputManager.KeyComparer,
-                InputManager.AxisComparer>).GetMethod("LoadReplayBuffers");
-        }
-
-        private static bool Prefix(ReplayData rm)
-        {
-            Replay.LoadReplayBuffers(rm);
-            return false;
         }
     }
 }
