@@ -56,6 +56,17 @@ namespace TasBird
         public static void OnFrameEnd()
         {
             FrameEnd?.Invoke();
+
+            // The boss sometimes uses the position of its transform (instead of
+            // just using its own position) to determine where certain attacks
+            // should spawn in. But the transform's position is only updated in
+            // OnUpdate (not OnFixedUpdate), which means that these attacks are
+            // non-deterministic.
+            // This fixes that by forcing the boss's transform's position to be
+            // updated at the end of every frame.
+            var boss = MasterController.GetPlayer().refs.boss;
+            if (boss != null)
+                boss.transform.position = boss.position.V3;
         }
     }
 
